@@ -129,6 +129,10 @@ class Beacon(tk.Tk):
         self.chats = {}
         self.status = "available"
         self.polling = False
+        self.loaded_once = False
+        self.sound_alerts = True
+        self.auto_open_im = True
+        self.groups = []
         self.avatar_cache = {}
         self.protocol("WM_DELETE_WINDOW", self.shutdown)
         self.login_view()
@@ -162,6 +166,7 @@ class Beacon(tk.Tk):
         self.generation += 1
         self.polling = False
         self.old_presence = None
+        self.loaded_once = False
         self.clear()
         root = ttk.Frame(self, padding=25)
         root.pack(expand=True, fill="x")
@@ -219,10 +224,16 @@ class Beacon(tk.Tk):
         self.status_field.pack(side="left")
         self.status_field.bind("<<ComboboxSelected>>", self.status_change)
         ttk.Button(row, text="+ Buddy", command=self.add_buddy).pack(side="right")
+        actions = ttk.Frame(self, padding=(10, 6))
+        actions.pack(fill="x")
+        ttk.Button(actions, text="+ Group", command=self.add_group).pack(side="left")
+        ttk.Button(actions, text="Alerts", command=self.toggle_alerts).pack(side="left", padx=5)
+        ttk.Button(actions, text="IM pop-ups", command=self.toggle_popups).pack(side="left")
         self.list = ttk.Treeview(self, show="tree", selectmode="browse")
         self.list.pack(fill="both", expand=True, padx=10, pady=10)
         self.list.bind("<Double-Button-1>", self.open_selected)
         self.list.bind("<Return>", self.open_selected)
+        self.list.bind("<Button-3>", self.context_menu)
         footer = ttk.Frame(self, padding=10)
         footer.pack(fill="x")
         ttk.Button(footer, text="IM", command=self.open_selected).pack(side="left")
@@ -236,7 +247,84 @@ class Beacon(tk.Tk):
         self.background(lambda: self.api.call("/presence", "POST", {"status": self.status}),
                         lambda *_: None)
 
-    def toast(self, text):
+    def toggle_alerts(self):
+        self.sound_alerts = not self.sound_alerts
+        self.toast("Notification sounds " + ("enabled" if self.sound_alerts else "disabled"))
+
+    def toggle_popups(self):
+        self.auto_open_im = not self.auto_open_im
+        self.toast("Incoming IM pop-ups " + ("enabled" if self.auto_open_im else "disabled"))
+
+    def group_action(self, path, method="POST", payload=None):
+        def completed(_result, error):
+            if error:
+                messagebox.showerror("Beacon", error, parent=self)
+            else:
+                self.refresh()
+        self.background(lambda: self.api.call(path, method, payload), completed)
+
+    def add_group(self):
+        name = simpledialog.askstring("Beacon", "New buddy group name:", parent=self)
+        if name and name.strip():
+            self.group_action("/groups", "POST", {"name": name.strip()})
+
+    def context_menu(self, event):
+        row = self.list.identify_row(event.y)
+        if not row:
+            return
+        self.list.selection_set(row)
+        menu = tk.Menu(self, tearoff=0)
+        if row.startswith("g:"):
+            gid = int(row[2:])
+            if gid:
+                group = next((g for g in self.groups if g["id"] == gid), None)
+                if group is None:
+                    return
+                def rename():
+                    name = simpledialog.askstring("Rename buddy group", "Group name:", initialvalue=group["name"], parent=self)
+                    if name and name.strip():
+                        self.group_action("/groups/" + str(gid), "PATCH", {"name": name.strip()})
+                def remove_group():
+                    if messagebox.askyesno("Delete group", "Move buddies to the default group and delete this group?", parent=self):
+                        self.group_action("/groups/" + str(gid), "DELETE")
+                menu.add_command(label="Rename group", command=rename)
+                menu.add_command(label="Delete group", command=remove_group)
+        elif row.startswith("p:"):
+            buddy_id = int(row[2:])
+            buddy = next((p for p in self.buddies if p["id"] == buddy_id), None)
+            if buddy is None:
+                return
+            menu.add_command(label="Open IM", command=self.open_selected)
+            def rename():
+                name = simpledialog.askstring("Buddy nickname", "Nickname (blank clears):",
+                                              initialvalue=buddy.get("nickname") or "", parent=self)
+                if name is not None:
+                    self.group_action("/buddies/" + str(buddy_id), "PATCH", {"nickname":name})
+            menu.add_command(label="Set nickname…", command=rename)
+            groups_menu = tk.Menu(menu, tearoff=0)
+            for group in [{"id":None,"name":"Buddies"}] + self.groups:
+                groups_menu.add_command(label=group["name"], command=lambda gid=group["id"]:
+                    self.group_action("/buddies/" + str(buddy_id), "PATCH", {"group_id": gid}))
+            menu.add_cascade(label="Move to group", menu=groups_menu)
+            menu.add_command(label="Unmute alerts" if buddy.get("muted") else "Mute alerts",
+                command=lambda: self.group_action("/buddies/" + str(buddy_id), "PATCH",
+                                                  {"muted":not bool(buddy.get("muted"))}))
+            menu.add_separator()
+            def remove():
+                if messagebox.askyesno("Remove buddy", "Remove " + buddy["display_name"] + " from your buddy list?", parent=self):
+                    self.group_action("/buddies/" + str(buddy_id), "DELETE")
+            menu.add_command(label="Remove buddy", command=remove)
+        else:
+            return
+        menu.tk_popup(event.x_root, event.y_root)
+        menu.grab_release()
+
+    def toast(self, text, sound=False):
+        if sound and self.sound_alerts:
+            try:
+                self.bell()
+            except tk.TclError:
+                pass
         tip = tk.Toplevel(self)
         tip.title("Beacon")
         tip.geometry("320x80")
@@ -252,41 +340,62 @@ class Beacon(tk.Tk):
         def work():
             self.api.call("/presence", "POST", {"status": self.status})
             roster = self.api.call("/buddies")
+            groups = self.api.call("/groups")
             windows = {}
             for peer in open_ids:
                 windows[peer] = (self.api.call("/messages/" + str(peer)),
                                  self.api.call("/typing/" + str(peer))["active"])
-            return roster, windows
+            return roster, groups, windows
         def done(result, error):
             self.polling = False
             if error:
                 self.connection.configure(text=str(error)[:90])
             else:
                 self.connection.configure(text="● Connected")
-                people, windows = result
+                people, groups, windows = result
+                self.groups = groups
                 new = {p["id"]: p["presence"] for p in people}
                 if self.old_presence:
                     for p in people:
-                        if self.old_presence.get(p["id"]) == "offline" and p["presence"] != "offline":
-                            self.toast(p["display_name"] + " signed on")
+                        if self.old_presence.get(p["id"]) == "offline" and p["presence"] != "offline" and not p.get("muted"):
+                            self.toast((p.get("nickname") or p["display_name"]) + " signed on", sound=True)
                 previous_unread = {p["id"]: p["unread_count"] for p in self.buddies}
-                for p in people:
-                    if p["unread_count"] > previous_unread.get(p["id"], 0):
-                        self.toast("New message from " + p["display_name"])
+                if self.loaded_once:
+                    for p in people:
+                        if p["unread_count"] > previous_unread.get(p["id"], 0) and not p.get("muted"):
+                            self.toast("New IM from " + (p.get("nickname") or p["display_name"]), sound=True)
+                            if self.auto_open_im and p["id"] not in self.chats:
+                                self.chats[p["id"]] = Chat(self, p)
+                self.loaded_once = True
                 self.old_presence = new
                 self.buddies = people
                 selected = self.list.selection()
-                chosen = int(selected[0]) if selected else None
+                chosen = selected[0] if selected else None
                 for item in self.list.get_children():
                     self.list.delete(item)
                 self.avatar_cache.clear()
-                for p in self.buddies:
-                    state = "●" if p["presence"] != "offline" else "○"
-                    label = state + " " + p["display_name"] + (" (" + str(p["unread_count"]) + ")" if p["unread_count"] else "")
-                    photo = self.avatar_for(p)
-                    self.list.insert("", "end", iid=str(p["id"]), text=label, image=photo)
-                    if p["id"] == chosen:
-                        self.list.selection_set(str(p["id"]))
+                group_order = [{"id":None,"name":"Buddies"}] + self.groups
+                for group in group_order:
+                    gid = "g:" + str(group["id"] or 0)
+                    people_in_group = sorted(
+                        (p for p in self.buddies if p.get("group_id") == group["id"]),
+                        key=lambda p: (p["presence"] == "offline", (p.get("nickname") or p["display_name"]).lower())
+                    )
+                    online = sum(p["presence"] != "offline" for p in people_in_group)
+                    self.list.insert("", "end", iid=gid,
+                                     text=group["name"] + " (" + str(online) + "/" + str(len(people_in_group)) + ")",
+                                     open=True)
+                    for p in people_in_group:
+                        state = "●" if p["presence"] != "offline" else "○"
+                        label = state + " " + (p.get("nickname") or p["display_name"])
+                        if p["unread_count"]:
+                            label += " (" + str(p["unread_count"]) + ")"
+                        if p.get("muted"):
+                            label += " [muted]"
+                        self.list.insert(gid, "end", iid="p:" + str(p["id"]),
+                                         text=label, image=self.avatar_for(p))
+                if chosen and self.list.exists(chosen):
+                    self.list.selection_set(chosen)
                 for peer, (msgs, typing) in windows.items():
                     if peer not in self.chats:
                         continue
@@ -325,9 +434,9 @@ class Beacon(tk.Tk):
 
     def open_selected(self, _event=None):
         selected = self.list.selection()
-        if not selected:
+        if not selected or not selected[0].startswith("p:"):
             return
-        buddy = next((p for p in self.buddies if p["id"] == int(selected[0])), None)
+        buddy = next((p for p in self.buddies if p["id"] == int(selected[0][2:])), None)
         if buddy is None:
             return
         if buddy["id"] in self.chats:
@@ -361,6 +470,9 @@ class Beacon(tk.Tk):
     def logout(self):
         token, base = self.api.token, self.api.base
         self.api.token = None
+        self.polling = False
+        self.loaded_once = False
+        self.old_presence = None
         for window in list(self.chats.values()):
             window.close()
         self.chats.clear()
@@ -377,7 +489,17 @@ class Beacon(tk.Tk):
 
     def shutdown(self):
         self.running = False
+        token, base = self.api.token, self.api.base
         self.api.token = None
+        if token:
+            def logout_session():
+                api = API()
+                api.token, api.base = token, base
+                try:
+                    api.call("/logout", "POST")
+                except Exception:
+                    pass
+            threading.Thread(target=logout_session, daemon=True).start()
         self.destroy()
 
 

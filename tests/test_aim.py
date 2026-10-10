@@ -69,8 +69,12 @@ def test_chat_window_and_profile_image():
             auth = {"Authorization":"Bearer "+token}
             assert client.get("/chat/42").status_code == 200
             assert b"Beacon" in client.get("/chat/42").content
-            picture = b"\x89PNG\r\n\x1a\n" + b"fake png data"
+            import io
+            from PIL import Image
+            output = io.BytesIO()
+            Image.new("RGB", (8, 8), (24, 50, 120)).save(output, "PNG")
+            picture = output.getvalue()
             result = client.post("/api/me/avatar", headers=auth,
                 json={"image_base64":base64.b64encode(picture).decode(),"mime_type":"image/png"})
             assert result.status_code == 200, result.text
-            assert client.get("/api/users",headers=auth).json()[0]["avatar"].startswith("data:image/png;base64,")
+            assert client.get("/api/users",headers=auth).json()[0]["avatar"].startswith("data:image/jpeg;base64,")
