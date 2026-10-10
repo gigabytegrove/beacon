@@ -1,92 +1,89 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#101b2a"><title>Beacon · LAN Messenger</title>
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#142237"><title>Beacon — Your people, your network</title>
 <style>
-:root{font:15px system-ui,Segoe UI,Arial,sans-serif;color:#e7eef9;background:#101b2a}
-*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer;border:0;border-radius:9px;padding:11px 14px;background:#326cde;color:white}button:hover{filter:brightness(1.12)}input{width:100%;padding:12px;color:#e7eef9;background:#13263d;border:1px solid #3b506b;border-radius:9px}input:focus{outline:2px solid #4e92ff}.hidden{display:none!important}.auth{max-width:400px;margin:12vh auto;padding:24px;background:#1c2c40;border-radius:16px}.auth input{margin:8px 0 14px}.auth button{width:100%;margin-top:6px}.muted{color:#99aec8}.error{color:#ff9292;min-height:21px}.app{height:100dvh;display:grid;grid-template-columns:280px minmax(0,1fr)}aside{background:#1b2b40;border-right:1px solid #32455f;display:flex;flex-direction:column;min-height:0}header{padding:16px;border-bottom:1px solid #32455f;display:flex;justify-content:space-between;align-items:center;gap:12px}h1,h2{margin:0}h1{font-size:23px}h2{font-size:17px}.people{overflow:auto;flex:1}.person{width:100%;text-align:left;background:transparent;border-radius:0;padding:16px;border-bottom:1px solid #293d56}.person.selected{background:#26466b}.sidebar-footer{padding:12px;display:flex;gap:8px;flex-wrap:wrap}.sidebar-footer button{font-size:12px}.chat{display:flex;flex-direction:column;min-height:0}.messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:10px}.bubble{background:#263b55;border-radius:12px;padding:10px 14px;max-width:75%;align-self:flex-start;white-space:pre-wrap;overflow-wrap:anywhere}.bubble.mine{background:#2359b1;align-self:flex-end}.time{font-size:11px;opacity:.7;display:block;margin-top:5px}form.composer{padding:15px;display:flex;gap:8px;border-top:1px solid #32455f}.composer button{min-width:74px}.composer input{flex:1}.empty{margin:auto;color:#99aec8}dialog{border:1px solid #435b76;border-radius:12px;padding:25px;background:#1b2b40;color:#e7eef9;max-width:380px;width:90%}dialog::backdrop{background:#0009}dialog input{margin:8px 0}dialog button{margin-top:10px}#status{font-size:12px}
-@media(max-width:650px){.app{grid-template-columns:105px minmax(0,1fr)}aside header{padding:10px}aside h1{font-size:15px}.person{padding:11px 8px;overflow-wrap:anywhere}.sidebar-footer{padding:5px}.sidebar-footer button{font-size:10px;padding:8px}header{padding:12px}.messages{padding:10px}.bubble{max-width:95%}.composer{padding:8px!important}}
+:root{font:14px system-ui,-apple-system,"Segoe UI",sans-serif;color:#e7edf8;background:#0d1726}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0,#213e65,#0d1726 60%);overflow:hidden}
+button,input,select,textarea{font:inherit}button{cursor:pointer;border:1px solid #456384;border-radius:10px;color:#eaf3ff;background:#26496d;padding:10px 13px}button:hover{background:#35638e}button:disabled{opacity:.5;cursor:default}
+input,select,textarea{padding:11px;width:100%;border:1px solid #3a5876;border-radius:9px;background:#15283e;color:#eef4fa}
+input:focus,textarea:focus{outline:2px solid #57a0ff}label{display:block;margin:8px 0}h1,h2,h3,p{margin:0}h1{font-size:21px}h2{font-size:17px}.muted{color:#a1b4ca}.hidden{display:none!important}
+.auth{max-width:400px;margin:9vh auto;padding:28px;background:#172b43;box-shadow:0 24px 80px #050b14a8;border:1px solid #355170;border-radius:20px}.auth h1{font-size:33px;margin-bottom:10px}.auth button{width:100%;margin-top:12px}
+.window{border:1px solid #365775;background:#13263b;box-shadow:0 24px 60px #080d17a8;border-radius:14px;overflow:hidden}
+#roster{width:min(400px,100vw);height:min(800px,100dvh);margin:3vh auto;display:flex;flex-direction:column}
+.window-title{display:flex;align-items:center;gap:10px;padding:15px;background:linear-gradient(100deg,#24588e,#172e50);border-bottom:1px solid #4f6e91}
+.brand{font-size:21px;font-weight:800;letter-spacing:.4px}.title-right{margin-left:auto;font-size:12px}
+.profile{display:flex;gap:13px;padding:17px;align-items:center;border-bottom:1px solid #2f4862}
+.avatar{height:43px;width:43px;object-fit:cover;border-radius:14px;background:linear-gradient(135deg,#547ca7,#29496b);display:grid;place-items:center;flex-shrink:0;color:white;font-weight:800;font-size:16px;border:1px solid #7391b1}
+.avatar.large{width:62px;height:62px}.profile-details{min-width:0;flex:1}.profile-details strong{display:block;font-size:16px}.profile-details small{display:block;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.toolbar{display:flex;gap:8px;padding:12px;align-items:center}.toolbar select{max-width:135px}.toolbar input{flex:1;min-width:0}.toolbar button{white-space:nowrap}
+.roster-scroll{overflow:auto;flex:1;min-height:0}.section-title{padding:11px 17px;background:#1a334e;color:#b3cae6;letter-spacing:.07em;text-transform:uppercase;font-weight:700;font-size:11px}
+.buddy{width:100%;display:flex;gap:12px;align-items:center;text-align:left;border-radius:0;border:0;border-bottom:1px solid #213b55;background:transparent;padding:12px 17px}.buddy:hover{background:#24425f}.buddy strong{display:block;font-size:14px}.buddy small{display:block;color:#9aafca;margin-top:3px;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.buddy-copy{flex:1;min-width:0}.online-dot{width:9px;height:9px;flex:0 0 auto;border-radius:50%;background:#70829b}.online-dot.available{background:#3ddd97;box-shadow:0 0 9px #3ddd9780}.online-dot.away{background:#ffc16a}.online-dot.busy{background:#ec7d76}.counter{background:#357de3;border-radius:20px;padding:2px 8px;font-size:12px}
+.foot{display:flex;flex-wrap:wrap;gap:7px;padding:10px 13px;border-top:1px solid #294563}.foot button{font-size:12px;padding:8px}.empty{padding:25px;text-align:center;color:#aec3db}
+#chat{height:100dvh;display:flex;flex-direction:column;border-radius:0}
+#chatHeader{display:flex;align-items:center;gap:12px;padding:13px 17px;background:linear-gradient(120deg,#225789,#183553);border-bottom:1px solid #466a92}
+#chatHeader h2{font-size:17px}#chatHeader small{display:block;margin-top:4px;color:#bacde1}#chatHeader .avatar{height:46px;width:46px}
+#messages{display:flex;flex-direction:column;gap:13px;padding:17px;overflow:auto;flex:1}.bubble{max-width:85%;align-self:flex-start;background:#243f5c;padding:12px 15px;border-radius:15px 15px 15px 4px;white-space:pre-wrap;overflow-wrap:anywhere}.bubble.mine{background:#2863a5;align-self:flex-end;border-radius:15px 15px 4px 15px}.bubble small{display:block;margin-top:6px;color:#c7ddf6;font-size:10px}
+#typing{padding:0 17px;height:23px;color:#a5d5fa;font-style:italic}
+#composer{display:flex;gap:9px;padding:13px;border-top:1px solid #32506d}#composer input{flex:1}
+dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:15px;padding:22px;width:min(430px,92vw)}dialog::backdrop{background:#060e19b5}dialog h2{margin-bottom:14px}dialog button{margin-top:10px}
+#toasts{position:fixed;bottom:15px;right:15px;display:flex;flex-direction:column;gap:8px;z-index:10;pointer-events:none}
+.toast{background:#275680;border:1px solid #6390b9;border-radius:12px;padding:12px 16px;box-shadow:0 10px 40px #0007;max-width:340px;pointer-events:auto}
+.error{color:#ff9c9c;margin-top:10px}
 </style></head>
 <body>
-<section id="login" class="auth">
-<h1>◉ Beacon</h1><p class="muted">Private messaging on your network.</p>
-<form id="loginForm"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><label>Device name<input id="device" maxlength="80" required></label><button>Sign in</button></form><p class="error" id="loginError" role="alert"></p>
+<section id="login" class="auth"><h1>◉ Beacon</h1><p class="muted">A familiar place to find your people.</p><form id="loginForm"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><label>Device name<input id="device" maxlength="80" required></label><button>Sign in</button></form><p id="loginError" class="error" role="alert"></p></section>
+<section id="roster" class="window hidden"><header class="window-title"><strong class="brand">◉ Beacon</strong><span class="title-right" id="connectStatus">Connecting…</span></header>
+<div class="profile"><div id="ownAvatar" class="avatar large">B</div><div class="profile-details"><strong id="ownName"></strong><small id="ownStatus">On your network</small></div><button id="editProfile" title="Edit profile">Edit</button></div>
+<div class="toolbar"><select id="statusSelect" aria-label="Availability"><option value="available">● Online</option><option value="away">◐ Away</option><option value="busy">⦿ Busy</option></select><button id="addBuddy">+ Buddy</button><button id="enableAlerts" title="Enable notifications">Alerts</button></div>
+<div class="roster-scroll"><div class="section-title" id="onlineTitle">Online buddies</div><div id="onlinePeople"></div><div class="section-title" id="offlineTitle">Offline buddies</div><div id="offlinePeople"></div></div>
+<footer class="foot"><button id="newUser" class="hidden">Create account</button><button id="devices">Devices</button><button id="logout">Sign out</button></footer>
 </section>
-<section id="app" class="app hidden">
-<aside><header><h1>◉ Beacon</h1><span id="status" class="muted">Offline</span></header><div id="people" class="people"></div><div class="sidebar-footer"><button id="newUser" class="hidden">Add user</button><button id="devices">Devices</button><button id="logout">Sign out</button></div></aside>
-<main class="chat"><header><h2 id="chatTitle">Select someone to chat with</h2></header><div class="messages" id="messages"><p class="empty">Choose a person to start a conversation.</p></div><form class="composer" id="sendForm"><input id="message" aria-label="Your message" maxlength="4000" placeholder="Write a message…" autocomplete="off" disabled><button id="sendButton" disabled>Send</button></form></main>
-</section>
-<dialog id="userDialog"><h2>Create user</h2><form id="userForm"><input id="newUsername" placeholder="Username" required minlength="3" maxlength="32"><input id="newDisplay" placeholder="Display name" required maxlength="80"><input id="newPassword" type="password" placeholder="Password (12+ characters)" required minlength="12"><p id="userError" class="error"></p><button>Create</button><button type="button" id="cancelUser">Cancel</button></form></dialog>
-<dialog id="deviceDialog"><h2>Your devices</h2><div id="sessionList"></div><button id="closeDevices">Close</button></dialog>
+<section id="chat" class="window hidden"><header id="chatHeader"><div id="peerAvatar" class="avatar"></div><div><h2 id="peerName">Conversation</h2><small id="peerStatus"></small></div></header><div id="messages"></div><p id="typing" aria-live="polite"></p><form id="composer"><input id="message" maxlength="4000" aria-label="Message" placeholder="Write a message…" autocomplete="off" required><button>Send</button></form></section>
+<dialog id="addDialog"><h2>Add a buddy</h2><p class="muted">Choose someone already registered on this Beacon server.</p><select id="directory"></select><button id="confirmAdd">Add to buddy list</button> <button data-close="addDialog">Cancel</button></dialog>
+<dialog id="profileDialog"><h2>Your profile</h2><label>Display name<input id="profileName" maxlength="80"></label><label>What's on your mind?<input id="profileStatus" maxlength="140"></label><label>Profile photo<input id="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp"></label><button id="saveProfile">Save profile</button> <button data-close="profileDialog">Cancel</button></dialog>
+<dialog id="userDialog"><h2>Create an account</h2><label>Username<input id="newUsername" minlength="3" maxlength="32"></label><label>Display name<input id="newDisplay" maxlength="80"></label><label>Password<input id="newPassword" type="password" minlength="12"></label><button id="saveUser">Create</button> <button data-close="userDialog">Cancel</button></dialog>
+<dialog id="deviceDialog"><h2>Signed-in devices</h2><div id="sessionList"></div><button data-close="deviceDialog">Close</button></dialog>
+<div id="toasts" aria-live="polite"></div>
 <script>
 "use strict";
-const $ = id => document.getElementById(id);
-let heartbeat = null; let token = sessionStorage.getItem("beacon_token"), me = null, peers = [], active = null, socket = null, reconnect = null;
-$("device").value = navigator.platform || "Browser";
-async function api(path, method="GET", body){
- const res=await fetch("/api"+path,{method,headers:{"Content-Type":"application/json",...(token?{"Authorization":"Bearer "+token}:{})},body:body?JSON.stringify(body):undefined,cache:"no-store"});
- const data=await res.json().catch(()=>({}));
- if(!res.ok){if(res.status===401 && path!=="/login")signOut();throw Error(data.detail||"Request failed");}
- return data;
-}
-function signOut(){
- sessionStorage.removeItem("beacon_token");token=null;me=null;active=null;
- clearTimeout(reconnect);clearInterval(heartbeat);if(socket){socket.onclose=null;socket.close();socket=null;}
- $("app").classList.add("hidden");$("login").classList.remove("hidden");$("password").value="";
-}
-$("loginForm").onsubmit=async e=>{
- e.preventDefault();$("loginError").textContent="";
- try{const data=await api("/login","POST",{username:$("username").value,password:$("password").value,device_name:$("device").value});token=data.token;sessionStorage.setItem("beacon_token",token);await start();}
- catch(err){$("loginError").textContent=err.message;}
-};
-async function start(){
- try{me=await api("/me");peers=(await api("/users")).filter(p=>p.id!==me.id);$("login").classList.add("hidden");$("app").classList.remove("hidden");$("newUser").classList.toggle("hidden",!me.is_admin);renderPeers();connect();if(active) await openChat(active);}
- catch(err){$("loginError").textContent=err.message;}
-}
-function renderPeers(){
- const root=$("people");root.replaceChildren();
- peers.forEach(p=>{const b=document.createElement("button");b.className="person"+(active===p.id?" selected":"");b.textContent=p.display_name;b.onclick=()=>openChat(p.id);root.append(b);});
-}
-function addMessage(m){
- const node=document.createElement("div");node.className="bubble"+(m.sender_id===me.id?" mine":"");
- const body=document.createElement("span");body.textContent=m.body;
- const timestamp=document.createElement("span");timestamp.className="time";timestamp.textContent=new Date(m.created_at*1000).toLocaleString();
- node.append(body,timestamp);$("messages").append(node);$("messages").scrollTop=$("messages").scrollHeight;
-}
-async function openChat(id){
- active=id;renderPeers();$("chatTitle").textContent=peers.find(p=>p.id===id)?.display_name||"Conversation";$("message").disabled=false;$("sendButton").disabled=false;
- const root=$("messages");root.replaceChildren();
- try{const messages=await api("/messages/"+id);if(active!==id)return;messages.forEach(m=>{addMessage(m);$("messages").lastElementChild.dataset.id=m.id;});}
- catch(err){root.textContent=err.message;}
-}
-$("sendForm").onsubmit=async e=>{
- e.preventDefault();const input=$("message"),body=input.value.trim();if(!body||!active)return;
- input.disabled=true;try{const m=await api("/messages","POST",{recipient_id:active,body});input.value="";if(!socket||socket.readyState!==WebSocket.OPEN){addMessage(m);$("messages").lastElementChild.dataset.id=m.id;}}catch(err){alert(err.message);}finally{input.disabled=false;input.focus();}
-};
-function connect(){
- if(!token)return;if(socket){socket.onclose=null;socket.close();}
- const protocol=location.protocol==="https:"?"wss:":"ws:";
- socket=new WebSocket(protocol+"//"+location.host+"/api/ws");
- socket.onopen=()=>{socket.send(JSON.stringify({type:"auth",token}));clearInterval(heartbeat);heartbeat=setInterval(()=>{if(socket?.readyState===WebSocket.OPEN)socket.send("ping");},25000);$("status").textContent="Online";if(active)openChat(active);};
- socket.onmessage=e=>{
-  if(e.data==="pong")return;
-  let event;try{event=JSON.parse(e.data)}catch{return}
-  if(event.type==="message"){
-   const m=event.message,other=m.sender_id===me.id?m.recipient_id:m.sender_id;
-   if(active===other){const shown=$("messages").querySelector('[data-id="'+m.id+'"]');if(!shown){addMessage(m);$("messages").lastElementChild.dataset.id=m.id;}}
-   if(m.sender_id!==me.id && document.hidden && "Notification" in window && Notification.permission==="granted")new Notification("Beacon",{body:peers.find(p=>p.id===m.sender_id)?.display_name+": "+m.body});
-  }
- };
- socket.onclose=()=>{clearInterval(heartbeat);$("status").textContent="Offline";if(token)reconnect=setTimeout(connect,3000);};
- socket.onerror=()=>socket.close();
-}
-document.addEventListener("visibilitychange",()=>{if(!document.hidden && active)openChat(active);});
-$("logout").onclick=async()=>{try{await api("/logout","POST")}catch{}signOut();};
+const $=id=>document.getElementById(id);
+const chatMatch=location.pathname.match(/^\/chat\/([0-9]+)$/);
+const chatId=chatMatch?Number(chatMatch[1]):null;
+let token=sessionStorage.getItem("beacon_token"),me=null,buddies=[],directory=[],socket=null,reconnectTimer=null,pulse=null,rosterTimer=null,onlineSnapshot=null,knownMessages=new Set(),typingTimer=null,lastTyped=0;
+if(!token&&window.opener){try{token=window.opener.sessionStorage.getItem("beacon_token");if(token)sessionStorage.setItem("beacon_token",token);}catch{}}
+$("device").value=(navigator.platform||"Browser").slice(0,80);
+function toast(message){const el=document.createElement("div");el.className="toast";el.textContent=message;$("toasts").append(el);setTimeout(()=>el.remove(),5000);}
+function notify(title,body){toast(title+" — "+body);if("Notification" in window&&Notification.permission==="granted"&&document.hidden){try{new Notification(title,{body:body});}catch{}}}
+async function api(path,method="GET",body){const response=await fetch("/api"+path,{method:method,cache:"no-store",headers:{"Content-Type":"application/json",...(token?{"Authorization":"Bearer "+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok){if(response.status===401&&path!=="/login")localLogout();throw Error(typeof data.detail==="string"?data.detail:"Request failed");}return data;}
+function localLogout(){token=null;me=null;sessionStorage.removeItem("beacon_token");clearInterval(pulse);clearInterval(rosterTimer);clearTimeout(reconnectTimer);if(socket){socket.onclose=null;socket.close();socket=null;}$("roster").classList.add("hidden");$("chat").classList.add("hidden");$("login").classList.remove("hidden");}
+function avatar(target,person){target.replaceChildren();target.className="avatar"+(target.id==="ownAvatar"?" large":"");if(person?.avatar?.startsWith("data:image/")){const img=document.createElement("img");img.src=person.avatar;img.alt="";img.style.cssText="width:100%;height:100%;border-radius:inherit;object-fit:cover";target.append(img);}else target.textContent=(person?.display_name||"?")[0].toUpperCase();}
+function buddyRow(p){const button=document.createElement("button");button.className="buddy";button.title="Open a conversation with "+p.display_name;const av=document.createElement("div");avatar(av,p);const dot=document.createElement("span");dot.className="online-dot "+p.presence;const details=document.createElement("span");details.className="buddy-copy";const name=document.createElement("strong");name.textContent=p.display_name;const line=document.createElement("small");line.textContent=p.presence==="offline"?"Offline":p.presence==="available"?(p.status_text||"Online"):p.presence+(p.status_text?" · "+p.status_text:"");details.append(name,line);button.append(av,dot,details);if(p.unread_count){const c=document.createElement("span");c.className="counter";c.textContent=p.unread_count;button.append(c);}button.onclick=()=>openChat(p.id);return button;}
+function drawRoster(){const online=$("onlinePeople"),offline=$("offlinePeople");online.replaceChildren();offline.replaceChildren();let on=0,off=0;for(const p of buddies){if(p.presence==="offline"){offline.append(buddyRow(p));off++;}else{online.append(buddyRow(p));on++;}}$("onlineTitle").textContent="Online buddies ("+on+")";$("offlineTitle").textContent="Offline buddies ("+off+")";if(!buddies.length){const el=document.createElement("p");el.className="empty";el.textContent="Your buddy list is empty. Choose + Buddy to add someone.";online.append(el);}}
+async function refreshBuddies(announce=true){if(!token)return;const fresh=await api("/buddies");const previous=onlineSnapshot;const now=Object.fromEntries(fresh.map(p=>[p.id,p.presence]));if(announce&&previous){for(const p of fresh){if(previous[p.id]==="offline"&&p.presence!=="offline")notify("Buddy online",p.display_name+" signed on");}}onlineSnapshot=now;buddies=fresh;drawRoster();if(chatId){const friend=fresh.find(p=>p.id===chatId)||directory.find(p=>p.id===chatId);if(friend)chatHeading(friend);}}
+function chatHeading(peer){$("peerName").textContent=peer.display_name;avatar($("peerAvatar"),peer);$("peerStatus").textContent=peer.presence==="offline"?"Offline":peer.presence+(peer.status_text?" · "+peer.status_text:"");}
+function openChat(id){const windowName="beacon-im-"+id;const url="/chat/"+id;const pop=window.open(url,windowName,"popup=yes,width=510,height=680,resizable=yes,scrollbars=no");if(!pop)toast("Pop-ups are blocked. Allow pop-ups for Beacon to open conversation windows.");else pop.focus();}
+function appendMessage(m){if(knownMessages.has(m.id))return;knownMessages.add(m.id);const bubble=document.createElement("div");bubble.className="bubble"+(m.sender_id===me.id?" mine":"");const text=document.createElement("span");text.textContent=m.body;const time=document.createElement("small");time.textContent=new Date(m.created_at*1000).toLocaleString();bubble.append(text,time);$("messages").append(bubble);$("messages").scrollTop=$("messages").scrollHeight;}
+async function loadHistory(){if(!chatId||!token)return;const msgs=await api("/messages/"+chatId);for(const m of msgs)appendMessage(m);const received=msgs.filter(m=>m.sender_id===chatId);if(received.length)await api("/conversations/"+chatId+"/read","POST",{through_id:received[received.length-1].id});}
+async function loadDirectory(){directory=await api("/directory");return directory;}
+async function start(){try{me=await api("/me");$("login").classList.add("hidden");if(chatId){$("chat").classList.remove("hidden");const list=await loadDirectory();const peer=list.find(p=>p.id===chatId);if(!peer){toast("This user no longer exists");return;}chatHeading(peer);await loadHistory();}else{$("roster").classList.remove("hidden");$("ownName").textContent=me.display_name;$("newUser").classList.toggle("hidden",!me.is_admin);await loadDirectory();const self=await api("/users");const myProfile=self.find(p=>p.id===me.id);avatar($("ownAvatar"),myProfile||me);$("ownStatus").textContent=myProfile?.status_text||"On your network";await refreshBuddies(false);}connect();clearInterval(rosterTimer);rosterTimer=setInterval(()=>{refreshBuddies(!chatId).catch(()=>{});if(chatId)loadHistory().catch(()=>{});},12000);}
+catch(err){$("loginError").textContent=err.message;}}
+function connect(){if(!token)return;if(socket){socket.onclose=null;socket.close();}socket=new WebSocket((location.protocol==="https:"?"wss:":"ws:")+"//"+location.host+"/api/ws");socket.onopen=()=>{socket.send(JSON.stringify({type:"auth",token:token}));clearInterval(pulse);pulse=setInterval(()=>{if(socket?.readyState===1)socket.send("ping");},25000);$("connectStatus").textContent="● Connected";refreshBuddies(false).catch(()=>{});if(chatId)loadHistory().catch(()=>{});};socket.onmessage=event=>{if(event.data==="pong")return;let msg;try{msg=JSON.parse(event.data);}catch{return;}if(msg.type==="message"){const m=msg.message;const peer=m.sender_id===me.id?m.recipient_id:m.sender_id;if(chatId===peer){appendMessage(m);if(m.sender_id===chatId)api("/conversations/"+chatId+"/read","POST",{through_id:m.id}).catch(()=>{});}else if(m.sender_id!==me.id){const friend=buddies.find(p=>p.id===peer)||directory.find(p=>p.id===peer);notify("New Beacon message",(friend?.display_name||"Someone")+": "+m.body);}refreshBuddies(false).catch(()=>{});}else if(msg.type==="typing"&&chatId===msg.user_id){$("typing").textContent=msg.active?($("peerName").textContent+" is typing…"):"";clearTimeout(typingTimer);if(msg.active)typingTimer=setTimeout(()=>$("typing").textContent="",5000);}else if(msg.type==="presence"){refreshBuddies(true).catch(()=>{});}else if(msg.type==="profile"||msg.type==="read_updated"){loadDirectory().then(()=>refreshBuddies(false)).catch(()=>{});}};socket.onclose=()=>{clearInterval(pulse);$("connectStatus").textContent="Disconnected";if(token)reconnectTimer=setTimeout(connect,3000);};socket.onerror=()=>socket.close();}
+$("loginForm").onsubmit=async e=>{e.preventDefault();$("loginError").textContent="";try{const d=await api("/login","POST",{username:$("username").value,password:$("password").value,device_name:$("device").value});token=d.token;sessionStorage.setItem("beacon_token",token);await start();}catch(err){$("loginError").textContent=err.message;}};
+$("composer").onsubmit=async e=>{e.preventDefault();const field=$("message"),text=field.value.trim();if(!text)return;field.disabled=true;try{const message=await api("/messages","POST",{recipient_id:chatId,body:text});field.value="";appendMessage(message);if(socket?.readyState===1)socket.send(JSON.stringify({type:"typing",recipient_id:chatId,active:false}));}catch(err){toast(err.message);}finally{field.disabled=false;field.focus();}};
+$("message").addEventListener("input",()=>{if(socket?.readyState!==1||!chatId)return;const now=Date.now();if(now-lastTyped>1700){lastTyped=now;socket.send(JSON.stringify({type:"typing",recipient_id:chatId,active:true}));}});
+$("logout").onclick=async()=>{try{await api("/logout","POST");}catch{}localLogout();};
+$("statusSelect").onchange=()=>api("/presence","POST",{status:$("statusSelect").value}).catch(err=>toast(err.message));
+$("addBuddy").onclick=async()=>{try{const all=await loadDirectory();const ids=new Set(buddies.map(p=>p.id));const select=$("directory");select.replaceChildren();for(const p of all.filter(p=>!ids.has(p.id))){const opt=document.createElement("option");opt.value=p.id;opt.textContent=p.display_name+" ("+p.username+")";select.append(opt);}$("addDialog").showModal();}catch(err){toast(err.message);}};
+$("confirmAdd").onclick=async()=>{const id=Number($("directory").value);if(!id)return;try{await api("/buddies/"+id,"POST");$("addDialog").close();await refreshBuddies(false);}catch(err){toast(err.message);}};
+$("editProfile").onclick=()=>{$("profileName").value=me.display_name;$("profileStatus").value=$("ownStatus").textContent==="On your network"?"":$("ownStatus").textContent;$("profileDialog").showModal();};
+$("saveProfile").onclick=async()=>{try{await api("/me/profile","PUT",{display_name:$("profileName").value,status_text:$("profileStatus").value});const f=$("profilePhoto").files[0];if(f){if(!["image/png","image/jpeg","image/webp"].includes(f.type))throw Error("Choose PNG, JPEG or WebP");const picture=await createPhoto(f);await api("/me/avatar","POST",{image_base64:picture.base64,mime_type:picture.mime});}const result=await api("/me");me=result;$("ownName").textContent=$("profileName").value;$("ownStatus").textContent=$("profileStatus").value||"On your network";$("profileDialog").close();await loadDirectory();const people=await api("/users");avatar($("ownAvatar"),people.find(p=>p.id===me.id));}catch(err){toast(err.message);}};
+async function createPhoto(file){const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error("Cannot read photo"));reader.readAsDataURL(file);});const pic=new Image();await new Promise((resolve,reject)=>{pic.onload=resolve;pic.onerror=()=>reject(Error("Cannot decode photo"));pic.src=src;});const canvas=document.createElement("canvas");canvas.width=160;canvas.height=160;const ctx=canvas.getContext("2d");const s=Math.min(pic.width,pic.height);ctx.drawImage(pic,(pic.width-s)/2,(pic.height-s)/2,s,s,0,0,160,160);const data=canvas.toDataURL("image/jpeg",.82);return{mime:"image/jpeg",base64:data.split(",")[1]};}
 $("newUser").onclick=()=>$("userDialog").showModal();
-$("cancelUser").onclick=()=>$("userDialog").close();
-$("userForm").onsubmit=async e=>{e.preventDefault();try{await api("/admin/users","POST",{username:$("newUsername").value,display_name:$("newDisplay").value,password:$("newPassword").value});$("userDialog").close();$("userForm").reset();peers=(await api("/users")).filter(p=>p.id!==me.id);renderPeers();}catch(err){$("userError").textContent=err.message;}};
-$("devices").onclick=async()=>{try{const list=await api("/sessions");$("sessionList").replaceChildren();for(const s of list){const row=document.createElement("p");row.textContent=s.device_name+(s.current?" (this device)":"")+" · ";const b=document.createElement("button");b.textContent="Revoke";b.onclick=async()=>{await api("/sessions/"+s.id,"DELETE");$("deviceDialog").close();if(s.current)signOut();else connect();};row.append(b);$("sessionList").append(row);}$("deviceDialog").showModal();}catch(err){alert(err.message);}};
-$("closeDevices").onclick=()=>$("deviceDialog").close();
+$("saveUser").onclick=async()=>{try{await api("/admin/users","POST",{username:$("newUsername").value,display_name:$("newDisplay").value,password:$("newPassword").value});$("userDialog").close();await loadDirectory();toast("Account created");}catch(err){toast(err.message);}};
+$("devices").onclick=async()=>{try{const all=await api("/sessions");const root=$("sessionList");root.replaceChildren();for(const s of all){const line=document.createElement("p");line.textContent=s.device_name+(s.current?" · this window":"")+" ";const button=document.createElement("button");button.textContent="Revoke";button.onclick=async()=>{await api("/sessions/"+s.id,"DELETE");$("deviceDialog").close();if(s.current)localLogout();};line.append(button);root.append(line);}$("deviceDialog").showModal();}catch(err){toast(err.message);}};
+$("enableAlerts").onclick=async()=>{if("Notification" in window){const result=await Notification.requestPermission();toast(result==="granted"?"Notifications enabled":"Notifications unavailable or denied");}else toast("Browser notifications not supported here");};
+document.querySelectorAll("[data-close]").forEach(button=>button.onclick=()=>$(button.dataset.close).close());
+document.addEventListener("visibilitychange",()=>{if(!document.hidden&&chatId)loadHistory().catch(()=>{});});
 if(token)start();
 </script></body></html>

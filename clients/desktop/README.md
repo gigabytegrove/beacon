@@ -1,34 +1,11 @@
-# Beacon Desktop (Windows / Linux)
+# Beacon Desktop (Windows and Linux)
 
-This is a **native Tkinter desktop client** backed by Beacon's HTTP API.
+Native Python 3/Tkinter client: traditional buddy list, separately opening chat windows, status controls, typing signals and pop-up alerts.
 
-## Requirements
+Windows: \`py -3 clients/desktop/beacon_desktop.py\`
 
-- Python 3.10 or newer
-- Tkinter (ships with the normal Python Windows installer)
-- Linux: install the distro's Tkinter package, commonly `python3-tk`
-- Access to a running Beacon server
+Linux: \`python3 clients/desktop/beacon_desktop.py\` (on Debian/Ubuntu install \`python3-tk\`).
 
-No pip dependencies are required.
+Enter the server URL, username, password and device name. The client maintains a separate device session, polls buddy status and chat updates, and keeps secrets in memory. Double-click a buddy or select them and press **IM** to open their private chat window. Use **+ Buddy** to enter a username. The desktop client can read profile photos via the server but this initial native Tk roster renders textual buddy entries; full image thumbnails and system-tray integration are not yet available.
 
-## Start
-
-Windows PowerShell:
-
-```powershell
-py -3 clients/desktop/beacon_desktop.py
-```
-
-Linux:
-
-```bash
-python3 clients/desktop/beacon_desktop.py
-```
-
-Enter the Beacon server URL, username, password and a device name. Each login creates an independent server-side session. Messages are retrieved every three seconds while the client is open. The client keeps credentials only in memory, with no password or token saved to disk.
-
-## Current limitations
-
-This initial desktop client does not yet install itself, show tray notifications, automatically reconnect/login, or deliver background notifications. Its chat window must remain open to receive updates. It displays the most recent 100 messages in the selected conversation. The server also supports WebSockets for later push-based native client updates.
-
-For untrusted network access use an HTTPS reverse proxy, not plain HTTP. Do not expose the server's HTTP port to the public internet.
+Run over a trusted LAN, or use HTTPS behind a reverse proxy. For reliable push notifications when a client is closed, future platform-specific integrations are required.
