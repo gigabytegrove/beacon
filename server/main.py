@@ -167,6 +167,11 @@ def home():
     return FileResponse(Path(__file__).parent / "static" / "index.html", headers={"Cache-Control": "no-store"})
 
 
+@app.get("/chat/{peer_id}")
+def chat_window(peer_id: int):
+    return FileResponse(Path(__file__).parent / "static" / "index.html", headers={"Cache-Control": "no-store"})
+
+
 @app.post("/api/login")
 def login(data: Credentials, request: Request):
     ip = request.client.host if request.client else "unknown"
@@ -211,7 +216,7 @@ def me(request: Request):
 def users(request: Request):
     current(request)
     with connection() as db:
-        rows = db.execute("SELECT id,username,display_name FROM users ORDER BY display_name").fetchall()
+        rows = db.execute("SELECT id,username,display_name,status_text,avatar FROM users ORDER BY display_name").fetchall()
     return [dict(row) for row in rows]
 
 
@@ -344,7 +349,9 @@ async def websocket(ws: WebSocket):
         CHANNELS[user_id].add(ws)
         WS_SESSIONS[ws] = actor["session_id"]
         from . import aim
-        await aim.set_presence(user_id, actor["session_id"], "available")
+        with connection() as db:
+            saved = db.execute("SELECT presence FROM sessions WHERE id=?", (actor["session_id"],)).fetchone()
+        await aim.set_presence(user_id, actor["session_id"], saved["presence"] if saved else "available")
         await ws.send_json({"type": "ready", "user_id": user_id})
         while True:
             # Revalidate after connection; session revocations take effect.

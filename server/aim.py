@@ -86,7 +86,7 @@ async def presence_sweeper():
                 "SELECT DISTINCT user_id FROM sessions WHERE last_seen>0 AND last_seen<=?",
                 (cutoff,)
             ).fetchall()
-            previous = {r["user_id"]: presence(r["user_id"]) for r in expired}
+            previous = {r["user_id"]: "available" for r in expired}
             db.execute("UPDATE sessions SET last_seen=0 WHERE last_seen>0 AND last_seen<=?", (cutoff,))
         for user_id, old in previous.items():
             await notify_presence(user_id, old)
