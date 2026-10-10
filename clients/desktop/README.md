@@ -1,11 +1,20 @@
-# Beacon Desktop (Windows and Linux)
+# Beacon Desktop — Native Windows and Linux
 
-Native Python 3/Tkinter client: traditional buddy list, separately opening chat windows, status controls, typing signals and pop-up alerts.
+The Beacon desktop client is a Python 3/Tkinter application built around the classic buddy list.
+
+- Sign in with server URL, username/password and unique device name
+- The buddy list stays in its own window; double-click a contact to open a separate IM window
+- Presence indicators, status selector, unread counts, sign-on and new-message pop-up notifications
+- Collapsible buddy groups with a context menu to rename/delete groups
+- Right-click a buddy to set a local nickname, move to a group, mute alerts or remove them
+- **+ Group** creates a new group; **+ Buddy** finds an existing account by username
+- **Alerts** toggles sound; **IM pop-ups** toggles automatic new-message windows
+- Photos use optional Pillow for JPEG/WebP thumbnails, or Tkinter's built-in PNG support
+
+Requirements: Python 3.10+, Tkinter, running Beacon Docker server. Install Pillow for full photo support: \`python3 -m pip install Pillow\`.
 
 Windows: \`py -3 clients/desktop/beacon_desktop.py\`
 
-Linux: \`python3 clients/desktop/beacon_desktop.py\` (on Debian/Ubuntu install \`python3-tk\`).
+Linux: \`python3 clients/desktop/beacon_desktop.py\` (install \`python3-tk\` if your distribution omits Tkinter).
 
-Enter the server URL, username, password and device name. The client maintains a separate device session, polls buddy status and chat updates, and keeps secrets in memory. Double-click a buddy or select them and press **IM** to open their private chat window. Use **+ Buddy** to enter a username. The desktop buddy roster shows profile thumbnails. Install Pillow with `python3 -m pip install Pillow` for JPEG/WebP thumbnails; Tkinter can display PNG without it. System-tray integration is not yet available.
-
-Run over a trusted LAN, or use HTTPS behind a reverse proxy. For reliable push notifications when a client is closed, future platform-specific integrations are required.
+The client polls the server every three seconds while running. Its account token is not written to disk. This early version does not have a system tray, auto-start or native OS notification integration. Android will be a separate native client.

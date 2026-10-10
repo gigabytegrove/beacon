@@ -90,6 +90,8 @@ def init_db():
         ):
             if column not in {r["name"] for r in db.execute("PRAGMA table_info(" + table + ")")}:
                 db.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition)
+        from .social import migrate
+        migrate(db)
         if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             username = os.getenv("BEACON_ADMIN_USERNAME", "admin")
             password = os.getenv("BEACON_ADMIN_PASSWORD", "")
@@ -117,7 +119,7 @@ async def lifespan(app):
             pass
 
 
-app = FastAPI(title="Beacon", version="0.3.0", lifespan=lifespan)
+app = FastAPI(title="Beacon", version="0.4.0", lifespan=lifespan)
 
 
 def auth_token(token):
@@ -141,8 +143,8 @@ def current(request: Request):
 
 
 class Credentials(BaseModel):
-    username: str
-    password: str
+    username: str = Field(min_length=1, max_length=32)
+    password: str = Field(min_length=1, max_length=256)
     device_name: str = Field(min_length=1, max_length=80)
 
 
@@ -199,11 +201,12 @@ def login(data: Credentials, request: Request):
 @app.post("/api/logout")
 async def logout(request: Request):
     user = current(request)
+    from .aim import presence, notify_presence
+    old_presence = presence(user["id"])
     with LOCK, connection() as db:
         db.execute("DELETE FROM sessions WHERE id=? AND user_id=?", (user["session_id"], user["id"]))
     await disconnect_session(user["session_id"])
-    from .aim import clear_presence
-    await clear_presence(user["id"], user["session_id"])
+    await notify_presence(user["id"], old_presence)
     return {"ok": True}
 
 
@@ -227,7 +230,11 @@ def create_user(data: NewUser, request: Request):
         raise HTTPException(403, "Administrator required")
     if not USERNAME.fullmatch(data.username):
         raise HTTPException(422, "Username must be 3-32 letters, digits, _, . or -")
+    if not data.display_name.strip():
+        raise HTTPException(422, "Display name must not be empty")
     with LOCK, connection() as db:
+        if db.execute("SELECT 1 FROM users WHERE username=? COLLATE NOCASE", (data.username,)).fetchone():
+            raise HTTPException(409, "Username already exists")
         try:
             result = db.execute(
                 "INSERT INTO users(username,display_name,password_hash,created_at) VALUES (?,?,?,?)",
@@ -249,13 +256,14 @@ def sessions(request: Request):
 @app.delete("/api/sessions/{session_id}")
 async def revoke_session(session_id: int, request: Request):
     actor = current(request)
+    from .aim import presence, notify_presence
+    old_presence = presence(actor["id"])
     with LOCK, connection() as db:
         result = db.execute("DELETE FROM sessions WHERE id=? AND user_id=?", (session_id, actor["id"]))
     if not result.rowcount:
         raise HTTPException(404, "Session not found")
     await disconnect_session(session_id)
-    from .aim import clear_presence
-    await clear_presence(actor["id"], session_id)
+    await notify_presence(actor["id"], old_presence)
     return {"ok": True}
 
 
@@ -389,3 +397,5 @@ async def websocket(ws: WebSocket):
             if not any(sid == actor["session_id"] for sid in WS_SESSIONS.values()):
                 await aim.clear_presence(user_id, actor["session_id"])
 \nfrom .aim import router as aim_router\napp.include_router(aim_router)\n
+from .social import router as social_router
+app.include_router(social_router)

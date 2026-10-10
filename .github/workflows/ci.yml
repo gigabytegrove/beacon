@@ -3,14 +3,22 @@ on:
   push:
   pull_request:
 jobs:
-  server:
+  server-and-client:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install -r requirements-dev.txt
-      - run: python -m compileall -q server tests clients/desktop
-      - run: python -m pytest -q
-      - run: docker build -t beacon-ci .
+      - name: Install dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Compile Python
+        run: python -m compileall -q server tests clients/desktop
+      - name: Browser JavaScript syntax
+        run: |
+          python -c "from pathlib import Path; html=Path('server/static/index.html').read_text(); Path('/tmp/beacon-browser.js').write_text(html.split('<script>',1)[1].split('</script>',1)[0])"
+          node --check /tmp/beacon-browser.js
+      - name: Integration tests
+        run: python -m pytest -q
+      - name: Docker build
+        run: docker build -t beacon-ci .

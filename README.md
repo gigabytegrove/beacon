@@ -1,57 +1,89 @@
 # Beacon
 
-**Beacon is a LAN-first instant messenger inspired by the classic buddy-list experience of AOL Instant Messenger.** It is entirely separate from Monita.
+**Beacon — an AIM-inspired instant messenger for your own LAN.** Classic buddy lists and individual IM windows backed by modern HTTP/WebSocket APIs and a private Docker server. Beacon is **not** Monita and shares no Monita functionality.
 
-## v0.3.0 — Buddy List
+## v0.4.0 — Buddy organization and notifications
 
-- Self-hosted Docker server; persistent SQLite messages, accounts, buddies, avatars and read cursors
-- Traditional buddy list: add a username, see online/offline/away/busy, personal status, profile photo and unread count (desktop JPEG/WebP thumbnails require Pillow)
-- **Separate conversation windows** in the browser and separate native Tkinter windows on Windows/Linux
-- Real-time typing signals and presence via WebSockets; desktop uses HTTP presence polling every three seconds
-- Sign-on and new-message alerts in browser (tab toasts, and browser OS notifications when permitted) and desktop (Tk pop-up toasts)
-- One-to-one history, cross-device shared read cursors, missed-message catch-up API and independently revocable device sessions
-- No internet relay, cloud service, media calls or Monita-specific features
+### Server
 
-## Launch the Docker server
+- Username/password authentication (scrypt), individually revocable 30-day device sessions and SQLite persistence
+- One-to-one chat, cross-device read positions and durable message history
+- Live WebSocket typing and presence with away/busy/available state and sign-on/off updates
+- Profile photos are checked, decoded and normalized server-side to JPEG using Pillow (max original 4 megapixels; max upload 192 KiB)
+- **Private buddy groups** per user, rename/delete group without deleting contacts
+- **Local buddy nicknames**, per-buddy notification muting, editable group membership
+- Multi-user authorization checks so one account cannot rearrange another account's groups or contacts
+
+### Classic AIM interface
+
+- Compact buddy-list window with collapsible groups, photo thumbnails, online/offline indicators, away messages and counters
+- Click a buddy to open their own conversation window; multiple independent IM windows
+- Typing indicators, sign-on and message notification tones (original synthesized chimes; no copyrighted AIM sound files)
+- Preferences to silence sounds or try auto-opening new IM windows
+- Windows/Linux native Python/Tkinter buddy list and separate chat windows; right-click to set nicknames, group membership, mute/remove a buddy
+- Incoming desktop IM window pop-ups, sign-on alerts and optional desktop bell notifications
+
+## Server install or upgrade
 
 \`\`\`bash
 git clone https://github.com/gigabytegrove/beacon.git
 cd beacon
 cp .env.example .env
-# Edit .env and replace the example admin password with a unique 12+ character secret
+# Edit .env and set your own unique 12+ character initial admin password.
 docker compose up -d --build
 \`\`\`
 
-Open \`http://LAN-SERVER-IP:8765\`. Log in as \`admin\` with the configured bootstrap password. Use **Create account** to add users, and **+ Buddy** to add people to your own buddy list. Click a buddy to open a separate IM conversation window. Allow pop-up windows for the Beacon origin if the browser blocks them.
+For an existing checkout, take a **backup of the Docker data volume** before updating, then:
 
-### Desktop
+\`\`\`bash
+git pull --ff-only origin main
+docker compose up -d --build
+\`\`\`
 
-Windows: \`py -3 clients/desktop/beacon_desktop.py\`
+Open \`http://SERVER-LAN-IP:8765\`. The default initial username is \`admin\`. Configure the bootstrap password in \`.env\`; after the first successful account creation the server will not reset it on restart. Protect the \`.env\` file as a secret. The service uses a Docker named volume for data and performs additive table/column migrations on boot.
 
-Linux: \`python3 clients/desktop/beacon_desktop.py\` (install \`python3-tk\` if needed).
+**LAN security:** Restrict port 8765 with firewall rules. HTTP does not encrypt passwords or messages in transit. For any untrusted LAN or access through the internet, deploy behind an HTTPS/WSS reverse proxy with appropriate network access controls. Beacon does not offer end-to-end encryption or an internet relay. Do not expose its HTTP service directly to the public internet.
 
-The desktop app has a persistent buddy list and separate native conversation windows. It maintains its active presence through the server API.
+### Windows/Linux desktop
 
-## Networking and security
+Windows PowerShell:
+\`\`\`powershell
+py -3 clients/desktop/beacon_desktop.py
+\`\`\`
 
-For direct LAN access, restrict port 8765 to trusted local IPs using your host firewall. Plain HTTP is **not** encrypted, even on a LAN. For remote or untrusted network access use a correctly configured HTTPS/WSS reverse proxy, firewall/access restrictions and a valid certificate. Do **not** directly expose this prototype to the public internet.
+Linux:
+\`\`\`bash
+python3 clients/desktop/beacon_desktop.py
+\`\`\`
 
-Passwords use scrypt with unique salts. Device tokens are randomly generated, stored only as hashes on the server and expire after 30 days. User photos are sanitized to a small JPEG by the web client before upload; the server accepts validated PNG, JPEG or WebP content up to 192 KiB. Password-authenticated sessions are separate per login, and buddy lists are user-specific. The system currently has **no end-to-end encryption**: the server can access message content.
+Tkinter is required (\`python3-tk\` on many Linux distros); optional Pillow adds JPEG/WebP buddy thumbnails. The native desktop client does not require Electron. Device credentials remain only in memory. The desktop client currently uses 3-second API polling for updates.
 
-The mobile Android application, system-tray integration, native packaged installers, and WebRTC audio/video are **not implemented yet**. Browser notifications usually require HTTPS or localhost. Native Tk pop-ups require the desktop client to remain running. Device notifications are not yet guaranteed when applications are closed.
+### Notes
 
-## API
+- Browser pop-up blockers may prevent automatic IM window creation from incoming network events. Click an alert or buddy manually if blocked.
+- Browser sound playback may need a click to enable the AudioContext. Browser OS notifications generally require HTTPS or localhost plus notification permission.
+- Native desktop IM alerts and sign-on sounds currently use Tkinter pop-up windows and the platform bell, rather than a system-tray service.
+- Android app, native packaged installers, file transfers and WebRTC audio/video are **not yet implemented**.
 
-- \`POST /api/login\` JSON username/password/device_name; returns bearer token
-- \`GET /api/users\` and \`GET /api/directory\` authenticated people
-- \`GET /api/buddies\`, \`POST /api/buddies/{id}\`, \`DELETE /api/buddies/{id}\`
-- \`PUT /api/me/profile\` display_name/status_text and \`POST /api/me/avatar\` base64 image/mime_type
-- \`POST /api/presence\` JSON status = available/away/busy
-- \`POST /api/typing/{recipient_id}\` JSON active, \`GET /api/typing/{peer_id}\`
-- \`POST /api/messages\` recipient_id/body, \`GET /api/messages/{peer_id}\`
-- \`GET /api/conversations\`, \`POST /api/conversations/{peer_id}/read\` with through_id
-- \`GET /api/events?after=<message_id>&limit=200\` durable catch-up
+## API quick reference
+
+Authenticate: \`POST /api/login\` (username, password, device_name). Pass the returned session token using \`Authorization: Bearer TOKEN\`.
+
+- \`GET /api/directory\`, \`GET /api/buddies\`, \`POST /api/buddies/{id}\`, \`DELETE /api/buddies/{id}\`
+- \`GET /api/groups\`, \`POST /api/groups\` (name), \`PATCH /api/groups/{id}\` (name), \`DELETE /api/groups/{id}\`
+- \`PATCH /api/buddies/{id}\` (nickname, muted, group_id; null group_id uses the default group)
+- \`PUT /api/me/profile\`, \`POST /api/me/avatar\`, \`POST /api/presence\`
+- \`POST /api/typing/{recipient_id}\`, \`GET /api/typing/{peer_id}\`
+- \`POST /api/messages\`, \`GET /api/messages/{id}\`, \`GET /api/events?after=ID\`
+- \`GET /api/conversations\`, \`POST /api/conversations/{peer_id}/read\`
 - \`GET /api/sessions\`, \`DELETE /api/sessions/{id}\`, \`POST /api/logout\`
-- WebSocket \`/api/ws\`: authenticate with first message \`{"type":"auth","token":"..."}\`, then \`{"type":"typing","recipient_id":N,"active":true}\`, \`{"type":"presence","status":"away"}\` or heartbeat text \`ping\`
+- WebSocket \`/api/ws\` auth-first JSON protocol for presence, typing and messages
 
-Existing installation databases are migrated automatically by the server. Back up your Docker named volume before deploying changes.
+## Tests
+
+\`\`\`bash
+python3 -m pip install -r requirements-dev.txt
+python3 -m pytest -q
+\`\`\`
+
+CI performs syntax checks, unit/integration tests, and a Docker image build.

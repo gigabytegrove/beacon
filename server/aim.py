@@ -2,11 +2,15 @@
 import asyncio
 import base64
 import binascii
+import io
 import time
 from collections import defaultdict
 
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
+from PIL import Image, ImageOps, UnidentifiedImageError
+
+Image.MAX_IMAGE_PIXELS = 4_000_000
 
 router = APIRouter(prefix="/api")
 PRESENCE_TTL = 55
@@ -222,14 +226,24 @@ async def avatar(data: AvatarUpload, request: Request):
         raise HTTPException(422, "Invalid image data")
     if len(raw) > 192 * 1024 or len(raw) < 12:
         raise HTTPException(413, "Photo must be under 192 KiB")
-    valid = {
-        "image/png": raw.startswith(b"\x89PNG\r\n\x1a\n"),
-        "image/jpeg": raw.startswith(b"\xff\xd8\xff"),
-        "image/webp": raw.startswith(b"RIFF") and raw[8:12] == b"WEBP",
-    }
-    if not valid.get(data.mime_type, False):
-        raise HTTPException(422, "Photo content does not match image format")
-    uri = "data:" + data.mime_type + ";base64," + data.image_base64
+    formats = {"image/png": "PNG", "image/jpeg": "JPEG", "image/webp": "WEBP"}
+    try:
+        with Image.open(io.BytesIO(raw)) as source:
+            if source.format != formats[data.mime_type]:
+                raise HTTPException(422, "Photo content does not match its declared format")
+            if source.width * source.height > 4_000_000:
+                raise HTTPException(413, "Photo resolution exceeds 4 megapixels")
+            source.load()
+            photo = ImageOps.exif_transpose(source).convert("RGB")
+            photo.thumbnail((256, 256), Image.Resampling.LANCZOS)
+            output = io.BytesIO()
+            photo.save(output, format="JPEG", quality=84, optimize=True)
+    except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError):
+        raise HTTPException(422, "Invalid or damaged image file")
+    cleaned = output.getvalue()
+    if len(cleaned) > 192 * 1024:
+        raise HTTPException(413, "Processed photo is too large")
+    uri = "data:image/jpeg;base64," + base64.b64encode(cleaned).decode("ascii")
     with m.LOCK, m.connection() as db:
         db.execute("UPDATE users SET avatar=? WHERE id=?", (uri, actor["id"]))
     await profile_changed(actor["id"])
