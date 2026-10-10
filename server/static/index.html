@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#101b2a"><title>Beacon · LAN Messenger</title>
+<style>
+:root{font:15px system-ui,Segoe UI,Arial,sans-serif;color:#e7eef9;background:#101b2a}
+*{box-sizing:border-box}body{margin:0}button,input{font:inherit}button{cursor:pointer;border:0;border-radius:9px;padding:11px 14px;background:#326cde;color:white}button:hover{filter:brightness(1.12)}input{width:100%;padding:12px;color:#e7eef9;background:#13263d;border:1px solid #3b506b;border-radius:9px}input:focus{outline:2px solid #4e92ff}.hidden{display:none!important}.auth{max-width:400px;margin:12vh auto;padding:24px;background:#1c2c40;border-radius:16px}.auth input{margin:8px 0 14px}.auth button{width:100%;margin-top:6px}.muted{color:#99aec8}.error{color:#ff9292;min-height:21px}.app{height:100dvh;display:grid;grid-template-columns:280px minmax(0,1fr)}aside{background:#1b2b40;border-right:1px solid #32455f;display:flex;flex-direction:column;min-height:0}header{padding:16px;border-bottom:1px solid #32455f;display:flex;justify-content:space-between;align-items:center;gap:12px}h1,h2{margin:0}h1{font-size:23px}h2{font-size:17px}.people{overflow:auto;flex:1}.person{width:100%;text-align:left;background:transparent;border-radius:0;padding:16px;border-bottom:1px solid #293d56}.person.selected{background:#26466b}.sidebar-footer{padding:12px;display:flex;gap:8px;flex-wrap:wrap}.sidebar-footer button{font-size:12px}.chat{display:flex;flex-direction:column;min-height:0}.messages{flex:1;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:10px}.bubble{background:#263b55;border-radius:12px;padding:10px 14px;max-width:75%;align-self:flex-start;white-space:pre-wrap;overflow-wrap:anywhere}.bubble.mine{background:#2359b1;align-self:flex-end}.time{font-size:11px;opacity:.7;display:block;margin-top:5px}form.composer{padding:15px;display:flex;gap:8px;border-top:1px solid #32455f}.composer button{min-width:74px}.composer input{flex:1}.empty{margin:auto;color:#99aec8}dialog{border:1px solid #435b76;border-radius:12px;padding:25px;background:#1b2b40;color:#e7eef9;max-width:380px;width:90%}dialog::backdrop{background:#0009}dialog input{margin:8px 0}dialog button{margin-top:10px}#status{font-size:12px}
+@media(max-width:650px){.app{grid-template-columns:105px minmax(0,1fr)}aside header{padding:10px}aside h1{font-size:15px}.person{padding:11px 8px;overflow-wrap:anywhere}.sidebar-footer{padding:5px}.sidebar-footer button{font-size:10px;padding:8px}header{padding:12px}.messages{padding:10px}.bubble{max-width:95%}.composer{padding:8px!important}}
+</style></head>
+<body>
+<section id="login" class="auth">
+<h1>◉ Beacon</h1><p class="muted">Private messaging on your network.</p>
+<form id="loginForm"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><label>Device name<input id="device" maxlength="80" required></label><button>Sign in</button></form><p class="error" id="loginError" role="alert"></p>
+</section>
+<section id="app" class="app hidden">
+<aside><header><h1>◉ Beacon</h1><span id="status" class="muted">Offline</span></header><div id="people" class="people"></div><div class="sidebar-footer"><button id="newUser" class="hidden">Add user</button><button id="devices">Devices</button><button id="logout">Sign out</button></div></aside>
+<main class="chat"><header><h2 id="chatTitle">Select someone to chat with</h2></header><div class="messages" id="messages"><p class="empty">Choose a person to start a conversation.</p></div><form class="composer" id="sendForm"><input id="message" aria-label="Your message" maxlength="4000" placeholder="Write a message…" autocomplete="off" disabled><button id="sendButton" disabled>Send</button></form></main>
+</section>
+<dialog id="userDialog"><h2>Create user</h2><form id="userForm"><input id="newUsername" placeholder="Username" required minlength="3" maxlength="32"><input id="newDisplay" placeholder="Display name" required maxlength="80"><input id="newPassword" type="password" placeholder="Password (12+ characters)" required minlength="12"><p id="userError" class="error"></p><button>Create</button><button type="button" id="cancelUser">Cancel</button></form></dialog>
+<dialog id="deviceDialog"><h2>Your devices</h2><div id="sessionList"></div><button id="closeDevices">Close</button></dialog>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+let token = sessionStorage.getItem("beacon_token"), me = null, peers = [], active = null, socket = null, reconnect = null;
+$("device").value = navigator.platform || "Browser";
+async function api(path, method="GET", body){
+ const res=await fetch("/api"+path,{method,headers:{"Content-Type":"application/json",...(token?{"Authorization":"Bearer "+token}:{})},body:body?JSON.stringify(body):undefined,cache:"no-store"});
+ const data=await res.json().catch(()=>({}));
+ if(!res.ok){if(res.status===401 && path!=="/login")signOut();throw Error(data.detail||"Request failed");}
+ return data;
+}
+function signOut(){
+ sessionStorage.removeItem("beacon_token");token=null;me=null;active=null;
+ clearTimeout(reconnect);if(socket){socket.onclose=null;socket.close();socket=null;}
+ $("app").classList.add("hidden");$("login").classList.remove("hidden");$("password").value="";
+}
+$("loginForm").onsubmit=async e=>{
+ e.preventDefault();$("loginError").textContent="";
+ try{const data=await api("/login","POST",{username:$("username").value,password:$("password").value,device_name:$("device").value});token=data.token;sessionStorage.setItem("beacon_token",token);await start();}
+ catch(err){$("loginError").textContent=err.message;}
+};
+async function start(){
+ try{me=await api("/me");peers=(await api("/users")).filter(p=>p.id!==me.id);$("login").classList.add("hidden");$("app").classList.remove("hidden");$("newUser").classList.toggle("hidden",!me.is_admin);renderPeers();connect();if(active) await openChat(active);}
+ catch(err){$("loginError").textContent=err.message;}
+}
+function renderPeers(){
+ const root=$("people");root.replaceChildren();
+ peers.forEach(p=>{const b=document.createElement("button");b.className="person"+(active===p.id?" selected":"");b.textContent=p.display_name;b.onclick=()=>openChat(p.id);root.append(b);});
+}
+function addMessage(m){
+ const node=document.createElement("div");node.className="bubble"+(m.sender_id===me.id?" mine":"");
+ const body=document.createElement("span");body.textContent=m.body;
+ const timestamp=document.createElement("span");timestamp.className="time";timestamp.textContent=new Date(m.created_at*1000).toLocaleString();
+ node.append(body,timestamp);$("messages").append(node);$("messages").scrollTop=$("messages").scrollHeight;
+}
+async function openChat(id){
+ active=id;renderPeers();$("chatTitle").textContent=peers.find(p=>p.id===id)?.display_name||"Conversation";$("message").disabled=false;$("sendButton").disabled=false;
+ const root=$("messages");root.replaceChildren();
+ try{const messages=await api("/messages/"+id);if(active!==id)return;messages.forEach(addMessage);}
+ catch(err){root.textContent=err.message;}
+}
+$("sendForm").onsubmit=async e=>{
+ e.preventDefault();const input=$("message"),body=input.value.trim();if(!body||!active)return;
+ input.disabled=true;try{const m=await api("/messages","POST",{recipient_id:active,body});input.value="";if(!socket||socket.readyState!==WebSocket.OPEN)addMessage(m);}catch(err){alert(err.message);}finally{input.disabled=false;input.focus();}
+};
+function connect(){
+ if(!token)return;if(socket){socket.onclose=null;socket.close();}
+ const protocol=location.protocol==="https:"?"wss:":"ws:";
+ socket=new WebSocket(protocol+"//"+location.host+"/api/ws");
+ socket.onopen=()=>{socket.send(JSON.stringify({type:"auth",token}));$("status").textContent="Online";if(active)openChat(active);};
+ socket.onmessage=e=>{
+  if(e.data==="pong")return;
+  let event;try{event=JSON.parse(e.data)}catch{return}
+  if(event.type==="message"){
+   const m=event.message,other=m.sender_id===me.id?m.recipient_id:m.sender_id;
+   if(active===other){const shown=$("messages").querySelector('[data-id="'+m.id+'"]');if(!shown){addMessage(m);$("messages").lastElementChild.dataset.id=m.id;}}
+   if(m.sender_id!==me.id && document.hidden && "Notification" in window && Notification.permission==="granted")new Notification("Beacon",{body:peers.find(p=>p.id===m.sender_id)?.display_name+": "+m.body});
+  }
+ };
+ socket.onclose=()=>{$("status").textContent="Offline";if(token)reconnect=setTimeout(connect,3000);};
+ socket.onerror=()=>socket.close();
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden && active)openChat(active);});
+$("logout").onclick=async()=>{try{await api("/logout","POST")}catch{}signOut();};
+$("newUser").onclick=()=>$("userDialog").showModal();
+$("cancelUser").onclick=()=>$("userDialog").close();
+$("userForm").onsubmit=async e=>{e.preventDefault();try{await api("/admin/users","POST",{username:$("newUsername").value,display_name:$("newDisplay").value,password:$("newPassword").value});$("userDialog").close();$("userForm").reset();peers=(await api("/users")).filter(p=>p.id!==me.id);renderPeers();}catch(err){$("userError").textContent=err.message;}};
+$("devices").onclick=async()=>{try{const list=await api("/sessions");$("sessionList").replaceChildren();for(const s of list){const row=document.createElement("p");row.textContent=s.device_name+(s.current?" (this device)":"")+" · ";const b=document.createElement("button");b.textContent="Revoke";b.onclick=async()=>{await api("/sessions/"+s.id,"DELETE");$("deviceDialog").close();if(s.current)signOut();else connect();};row.append(b);$("sessionList").append(row);}$("deviceDialog").showModal();}catch(err){alert(err.message);}};
+$("closeDevices").onclick=()=>$("deviceDialog").close();
+if(token)start();
+</script></body></html>
