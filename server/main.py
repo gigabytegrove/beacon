@@ -21,6 +21,7 @@ LOCK = threading.RLock()
 SESSION_AGE = 30 * 86400
 LOGIN_ATTEMPTS = defaultdict(deque)
 CHANNELS: dict[int, set[WebSocket]] = defaultdict(set)
+WS_SESSIONS: dict[WebSocket, int] = {}
 USERNAME = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
 
 
@@ -69,7 +70,26 @@ def init_db():
         );
         CREATE INDEX IF NOT EXISTS idx_messages_inbox ON messages(recipient_id,id);
         CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id,id);
+        CREATE TABLE IF NOT EXISTS buddies(
+            owner_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            buddy_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            PRIMARY KEY(owner_id, buddy_id)
+        );
+        CREATE TABLE IF NOT EXISTS read_cursors(
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            peer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            last_read_id INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY(user_id, peer_id)
+        );
         """)
+        for table, column, definition in (
+            ("users", "avatar", "TEXT NOT NULL DEFAULT ''"),
+            ("users", "status_text", "TEXT NOT NULL DEFAULT ''"),
+            ("sessions", "last_seen", "INTEGER NOT NULL DEFAULT 0"),
+            ("sessions", "presence", "TEXT NOT NULL DEFAULT 'available'"),
+        ):
+            if column not in {r["name"] for r in db.execute("PRAGMA table_info(" + table + ")")}:
+                db.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition)
         if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
             username = os.getenv("BEACON_ADMIN_USERNAME", "admin")
             password = os.getenv("BEACON_ADMIN_PASSWORD", "")
@@ -85,10 +105,19 @@ def init_db():
 @asynccontextmanager
 async def lifespan(app):
     init_db()
-    yield
+    from . import aim
+    sweeper = asyncio.create_task(aim.presence_sweeper())
+    try:
+        yield
+    finally:
+        sweeper.cancel()
+        try:
+            await sweeper
+        except asyncio.CancelledError:
+            pass
 
 
-app = FastAPI(title="Beacon", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Beacon", version="0.3.0", lifespan=lifespan)
 
 
 def auth_token(token):
@@ -167,7 +196,9 @@ async def logout(request: Request):
     user = current(request)
     with LOCK, connection() as db:
         db.execute("DELETE FROM sessions WHERE id=? AND user_id=?", (user["session_id"], user["id"]))
-    await disconnect_user(user["id"])
+    await disconnect_session(user["session_id"])
+    from .aim import clear_presence
+    await clear_presence(user["id"], user["session_id"])
     return {"ok": True}
 
 
@@ -217,7 +248,9 @@ async def revoke_session(session_id: int, request: Request):
         result = db.execute("DELETE FROM sessions WHERE id=? AND user_id=?", (session_id, actor["id"]))
     if not result.rowcount:
         raise HTTPException(404, "Session not found")
-    await disconnect_user(actor["id"])
+    await disconnect_session(session_id)
+    from .aim import clear_presence
+    await clear_presence(actor["id"], session_id)
     return {"ok": True}
 
 
@@ -244,6 +277,15 @@ async def publish(user_id, message):
             dead.append(ws)
     for ws in dead:
         CHANNELS[user_id].discard(ws)
+
+
+async def disconnect_session(session_id):
+    for ws, sid in list(WS_SESSIONS.items()):
+        if sid == session_id:
+            try:
+                await ws.close(code=4001)
+            except Exception:
+                pass
 
 
 async def disconnect_user(user_id):
@@ -300,6 +342,9 @@ async def websocket(ws: WebSocket):
             return
         user_id = actor["id"]
         CHANNELS[user_id].add(ws)
+        WS_SESSIONS[ws] = actor["session_id"]
+        from . import aim
+        await aim.set_presence(user_id, actor["session_id"], "available")
         await ws.send_json({"type": "ready", "user_id": user_id})
         while True:
             # Revalidate after connection; session revocations take effect.
@@ -308,9 +353,21 @@ async def websocket(ws: WebSocket):
             except HTTPException:
                 await ws.close(code=4001)
                 return
-            incoming = await asyncio.wait_for(ws.receive_text(), timeout=60)
+            incoming = await ws.receive_text()
             if incoming == "ping":
+                await aim.touch_presence(user_id, actor["session_id"])
                 await ws.send_text("pong")
+                continue
+            try:
+                message = json.loads(incoming)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(message, dict):
+                continue
+            if message.get("type") == "typing":
+                await aim.send_typing(user_id, message.get("recipient_id"), message.get("active") is True)
+            elif message.get("type") == "presence" and message.get("status") in ("available","away","busy"):
+                await aim.set_presence(user_id, actor["session_id"], message["status"])
     except asyncio.TimeoutError:
         try:
             await ws.close(code=1001)
@@ -319,5 +376,9 @@ async def websocket(ws: WebSocket):
     except WebSocketDisconnect:
         pass
     finally:
+        WS_SESSIONS.pop(ws, None)
         if user_id is not None:
             CHANNELS[user_id].discard(ws)
+            if not any(sid == actor["session_id"] for sid in WS_SESSIONS.values()):
+                await aim.clear_presence(user_id, actor["session_id"])
+\nfrom .aim import router as aim_router\napp.include_router(aim_router)\n
