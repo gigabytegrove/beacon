@@ -1,0 +1,27 @@
+services:
+  beacon:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      BEACON_DB: /data/beacon.db
+      BEACON_ADMIN_USERNAME: ${BEACON_ADMIN_USERNAME:-admin}
+      BEACON_ADMIN_PASSWORD: ${BEACON_ADMIN_PASSWORD:?Set BEACON_ADMIN_PASSWORD in .env}
+    volumes:
+      - beacon-data:/data
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  beacon-data:
