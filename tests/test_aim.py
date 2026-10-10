@@ -53,3 +53,24 @@ def test_buddy_list_presence_typing_avatar_and_read_sync():
                 assert client.get("/api/me",headers=a2).status_code == 200
             assert client.delete("/api/buddies/" + str(uid),headers=admin).status_code == 200
             assert client.get("/api/buddies",headers=admin).json() == []
+
+
+def test_chat_window_and_profile_image():
+    import base64
+    with tempfile.TemporaryDirectory() as directory:
+        os.environ["BEACON_DB"] = directory + "/beacon.sqlite"
+        os.environ["BEACON_ADMIN_PASSWORD"] = "secure temporary admin password"
+        os.environ["BEACON_ADMIN_USERNAME"] = "admin"
+        import server.main
+        main = importlib.reload(server.main)
+        with TestClient(main.app) as client:
+            token = client.post("/api/login", json={"username":"admin",
+                       "password":"secure temporary admin password","device_name":"Browser"}).json()["token"]
+            auth = {"Authorization":"Bearer "+token}
+            assert client.get("/chat/42").status_code == 200
+            assert b"Beacon" in client.get("/chat/42").content
+            picture = b"\x89PNG\r\n\x1a\n" + b"fake png data"
+            result = client.post("/api/me/avatar", headers=auth,
+                json={"image_base64":base64.b64encode(picture).decode(),"mime_type":"image/png"})
+            assert result.status_code == 200, result.text
+            assert client.get("/api/users",headers=auth).json()[0]["avatar"].startswith("data:image/png;base64,")

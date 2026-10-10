@@ -5,7 +5,7 @@
 ## v0.3.0 — Buddy List
 
 - Self-hosted Docker server; persistent SQLite messages, accounts, buddies, avatars and read cursors
-- Traditional buddy list: add a username, see online/offline/away/busy, personal status, profile photo and unread count
+- Traditional buddy list: add a username, see online/offline/away/busy, personal status, profile photo and unread count (desktop JPEG/WebP thumbnails require Pillow)
 - **Separate conversation windows** in the browser and separate native Tkinter windows on Windows/Linux
 - Real-time typing signals and presence via WebSockets; desktop uses HTTP presence polling every three seconds
 - Sign-on and new-message alerts in browser (tab toasts, and browser OS notifications when permitted) and desktop (Tk pop-up toasts)

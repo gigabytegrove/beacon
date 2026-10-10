@@ -1,4 +1,6 @@
 """Beacon buddy-list desktop client: Windows / Linux, Python 3 Tkinter."""
+import base64
+import io
 import json
 import platform
 import queue
@@ -10,6 +12,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime
 from tkinter import messagebox, simpledialog, ttk
+
+try:
+    from PIL import Image, ImageTk
+except ImportError:
+    Image = ImageTk = None
 
 
 class API:
@@ -122,6 +129,7 @@ class Beacon(tk.Tk):
         self.chats = {}
         self.status = "available"
         self.polling = False
+        self.avatar_cache = {}
         self.protocol("WM_DELETE_WINDOW", self.shutdown)
         self.login_view()
         self.after(100, self.drain)
@@ -152,6 +160,8 @@ class Beacon(tk.Tk):
 
     def login_view(self):
         self.generation += 1
+        self.polling = False
+        self.old_presence = None
         self.clear()
         root = ttk.Frame(self, padding=25)
         root.pack(expand=True, fill="x")
@@ -209,7 +219,7 @@ class Beacon(tk.Tk):
         self.status_field.pack(side="left")
         self.status_field.bind("<<ComboboxSelected>>", self.status_change)
         ttk.Button(row, text="+ Buddy", command=self.add_buddy).pack(side="right")
-        self.list = tk.Listbox(self, font=("Segoe UI", 11), exportselection=False)
+        self.list = ttk.Treeview(self, show="tree", selectmode="browse")
         self.list.pack(fill="both", expand=True, padx=10, pady=10)
         self.list.bind("<Double-Button-1>", self.open_selected)
         self.list.bind("<Return>", self.open_selected)
@@ -265,15 +275,18 @@ class Beacon(tk.Tk):
                         self.toast("New message from " + p["display_name"])
                 self.old_presence = new
                 self.buddies = people
-                selected = self.list.curselection()
-                chosen = self.buddies[selected[0]]["id"] if selected and selected[0] < len(self.buddies) else None
-                self.list.delete(0, "end")
+                selected = self.list.selection()
+                chosen = int(selected[0]) if selected else None
+                for item in self.list.get_children():
+                    self.list.delete(item)
+                self.avatar_cache.clear()
                 for p in self.buddies:
                     state = "●" if p["presence"] != "offline" else "○"
                     label = state + " " + p["display_name"] + (" (" + str(p["unread_count"]) + ")" if p["unread_count"] else "")
-                    self.list.insert("end", label)
+                    photo = self.avatar_for(p)
+                    self.list.insert("", "end", iid=str(p["id"]), text=label, image=photo)
                     if p["id"] == chosen:
-                        self.list.selection_set("end")
+                        self.list.selection_set(str(p["id"]))
                 for peer, (msgs, typing) in windows.items():
                     if peer not in self.chats:
                         continue
@@ -288,11 +301,35 @@ class Beacon(tk.Tk):
                 self.after(3000, self.refresh)
         self.background(work, done)
 
+    def avatar_for(self, person):
+        data = person.get("avatar") or ""
+        if not data.startswith("data:image/") or "," not in data:
+            return ""
+        try:
+            mime, payload = data.split(",", 1)
+            if Image is not None:
+                image = Image.open(io.BytesIO(base64.b64decode(payload)))
+                image.thumbnail((32, 32))
+                photo = ImageTk.PhotoImage(image)
+            elif mime == "data:image/png;base64":
+                photo = tk.PhotoImage(data=payload)
+                if photo.width() > 40:
+                    step = max(1, photo.width() // 32)
+                    photo = photo.subsample(step, step)
+            else:
+                return ""
+            self.avatar_cache[person["id"]] = photo
+            return photo
+        except (ValueError, OSError, tk.TclError):
+            return ""
+
     def open_selected(self, _event=None):
-        selected = self.list.curselection()
+        selected = self.list.selection()
         if not selected:
             return
-        buddy = self.buddies[selected[0]]
+        buddy = next((p for p in self.buddies if p["id"] == int(selected[0])), None)
+        if buddy is None:
+            return
         if buddy["id"] in self.chats:
             self.chats[buddy["id"]].window.lift()
             self.chats[buddy["id"]].entry.focus_set()
