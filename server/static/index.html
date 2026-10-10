@@ -22,7 +22,7 @@
 <script>
 "use strict";
 const $ = id => document.getElementById(id);
-let token = sessionStorage.getItem("beacon_token"), me = null, peers = [], active = null, socket = null, reconnect = null;
+let heartbeat = null; let token = sessionStorage.getItem("beacon_token"), me = null, peers = [], active = null, socket = null, reconnect = null;
 $("device").value = navigator.platform || "Browser";
 async function api(path, method="GET", body){
  const res=await fetch("/api"+path,{method,headers:{"Content-Type":"application/json",...(token?{"Authorization":"Bearer "+token}:{})},body:body?JSON.stringify(body):undefined,cache:"no-store"});
@@ -32,7 +32,7 @@ async function api(path, method="GET", body){
 }
 function signOut(){
  sessionStorage.removeItem("beacon_token");token=null;me=null;active=null;
- clearTimeout(reconnect);if(socket){socket.onclose=null;socket.close();socket=null;}
+ clearTimeout(reconnect);clearInterval(heartbeat);if(socket){socket.onclose=null;socket.close();socket=null;}
  $("app").classList.add("hidden");$("login").classList.remove("hidden");$("password").value="";
 }
 $("loginForm").onsubmit=async e=>{
@@ -57,18 +57,18 @@ function addMessage(m){
 async function openChat(id){
  active=id;renderPeers();$("chatTitle").textContent=peers.find(p=>p.id===id)?.display_name||"Conversation";$("message").disabled=false;$("sendButton").disabled=false;
  const root=$("messages");root.replaceChildren();
- try{const messages=await api("/messages/"+id);if(active!==id)return;messages.forEach(addMessage);}
+ try{const messages=await api("/messages/"+id);if(active!==id)return;messages.forEach(m=>{addMessage(m);$("messages").lastElementChild.dataset.id=m.id;});}
  catch(err){root.textContent=err.message;}
 }
 $("sendForm").onsubmit=async e=>{
  e.preventDefault();const input=$("message"),body=input.value.trim();if(!body||!active)return;
- input.disabled=true;try{const m=await api("/messages","POST",{recipient_id:active,body});input.value="";if(!socket||socket.readyState!==WebSocket.OPEN)addMessage(m);}catch(err){alert(err.message);}finally{input.disabled=false;input.focus();}
+ input.disabled=true;try{const m=await api("/messages","POST",{recipient_id:active,body});input.value="";if(!socket||socket.readyState!==WebSocket.OPEN){addMessage(m);$("messages").lastElementChild.dataset.id=m.id;}}catch(err){alert(err.message);}finally{input.disabled=false;input.focus();}
 };
 function connect(){
  if(!token)return;if(socket){socket.onclose=null;socket.close();}
  const protocol=location.protocol==="https:"?"wss:":"ws:";
  socket=new WebSocket(protocol+"//"+location.host+"/api/ws");
- socket.onopen=()=>{socket.send(JSON.stringify({type:"auth",token}));$("status").textContent="Online";if(active)openChat(active);};
+ socket.onopen=()=>{socket.send(JSON.stringify({type:"auth",token}));clearInterval(heartbeat);heartbeat=setInterval(()=>{if(socket?.readyState===WebSocket.OPEN)socket.send("ping");},25000);$("status").textContent="Online";if(active)openChat(active);};
  socket.onmessage=e=>{
   if(e.data==="pong")return;
   let event;try{event=JSON.parse(e.data)}catch{return}
@@ -78,7 +78,7 @@ function connect(){
    if(m.sender_id!==me.id && document.hidden && "Notification" in window && Notification.permission==="granted")new Notification("Beacon",{body:peers.find(p=>p.id===m.sender_id)?.display_name+": "+m.body});
   }
  };
- socket.onclose=()=>{$("status").textContent="Offline";if(token)reconnect=setTimeout(connect,3000);};
+ socket.onclose=()=>{clearInterval(heartbeat);$("status").textContent="Offline";if(token)reconnect=setTimeout(connect,3000);};
  socket.onerror=()=>socket.close();
 }
 document.addEventListener("visibilitychange",()=>{if(!document.hidden && active)openChat(active);});
