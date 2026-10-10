@@ -6,4 +6,4 @@ RUN pip install --no-cache-dir -r requirements.txt && useradd -r -u 10001 -m bea
 COPY server ./server
 USER beacon
 EXPOSE 8765
-CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8765", "--proxy-headers", "false"]
+CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8765", "--no-proxy-headers"]
