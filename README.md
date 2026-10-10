@@ -22,7 +22,7 @@ cp .env.example .env
 docker compose up -d --build
 ```
 
-Open `http://<docker-host-ip>:8765` on your local network. Sign in with `admin` and the password set in `.env`. The initial admin credentials are used only when the user database has no accounts. Remove the bootstrap password from your .env after the first successful launch, then recreate the container.
+Open `http://<docker-host-ip>:8765` on your local network. Sign in with `admin` and the password set in `.env`. The initial admin credentials are used only when the user database has no accounts. On subsequent restarts the bootstrap password is not used to reset existing accounts. Keep the environment variable defined for Compose startup, and protect `.env` as a local secret.
 
 **Important:** Plain HTTP is suitable only on an explicitly trusted LAN. For untrusted networks, use HTTPS/WSS with a reverse proxy, firewall rules and access restrictions. Beacon does not expose a built-in public internet relay. Avoid exposing port 8765 directly to the internet.
 
