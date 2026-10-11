@@ -66,3 +66,12 @@ The legacy Python/Tkinter GUI is not part of release packaging; it remains in th
 Each backend request enters a managed SQLite context that commits completed writes, rolls back exceptions and closes its connection, rather than relying on Python's reference counting and delayed garbage collection. Presence lookups for directory/buddy results now batch user IDs into groups of 400; each group shares a live-connection query for all active device sessions, including aggregate status precedence (available, busy, away, offline). An additive session index supports these queries on existing Dokploy volumes.
 
 The Fyne buddy-list view compares new roster/groups with its prior state and leaves the existing widget hierarchy untouched when data is identical, maintaining scroll position. When the API returns HTTP 401 during polling, the client invalidates remembered credentials and returns to login, rather than displaying a persistent network error.
+
+
+## Native Go event catch-up and display-first receipts
+
+Go `internal/beacon/sync.go` validates and delivers message history incrementally using server `/api/events`, with strict monotonically increasing IDs and a per-login in-memory cursor. The Windows/Linux Fyne roster runs a bounded catch-up alongside its existing presence/group refresh; new-message alerts are coalesced by contact, independent of server unread-count changes. The first pass seeds the account's latest message cursor and does not replay old messages as notifications. Only the account's received messages trigger new-IM alerts.
+
+The Go and Android chat renderers now acknowledge read state **after** inserting incoming messages into the active conversation. Android deduplicates in-flight read IDs per buddy. Neither an event catch-up nor Android background monitoring marks messages read by itself. The existing Docker server remains single-container Python/FastAPI with SQLite durability; no separate push service or message broker is introduced.
+
+Full semantics and acceptance tests: [Multi-device Delivery](MULTI-DEVICE-DELIVERY.md).

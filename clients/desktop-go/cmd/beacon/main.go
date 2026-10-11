@@ -173,8 +173,13 @@ func(u *UI) showRoster(){
 func(u *UI) startPolling(){
  stop:=make(chan struct{});u.pollStop=stop
  client:=u.api
+ accountID:=u.me.ID
  go func(){
   tick:=time.NewTicker(3500*time.Millisecond);defer tick.Stop()
+  // Per-login message cursor. On initial sync, seed from the latest server
+  // message so old history doesn't produce a flood of false "new IM" alerts.
+  cursor:=beacon.Cursor(0)
+  ready:=false
   for {
    select{case <-stop:return;default:}
    c,cancel:=ctx()
@@ -182,9 +187,28 @@ func(u *UI) startPolling(){
    _=client.Presence(c,status)
    friends,err:=client.Buddies(c)
    groups,e2:=client.Groups(c)
+   var arrivals []beacon.Message
+   if err==nil && e2==nil {
+    if !ready {
+     if last,e:=client.LatestEventID(c);e==nil {cursor=last;ready=true}
+    } else {
+     // Bounded catch-up keeps delivery monotonic after a LAN interruption.
+     next,_:=client.CatchUp(c,cursor,100,5,func(message beacon.Message)error{
+      if message.SenderID!=accountID && message.RecipientID==accountID {
+       arrivals=append(arrivals,message)
+      }
+      return nil
+     })
+     cursor=next
+    }
+   }
    cancel()
    if err==nil&&e2==nil{
-    fyne.Do(func(){if u.api!=client{return};u.applyRoster(friends,groups)})
+    fyne.Do(func(){
+     if u.api!=client{return}
+     u.applyRoster(friends,groups)
+     u.notifyNewMessages(arrivals)
+    })
    }else{
     if err==nil{err=e2}
     fyne.Do(func(){
@@ -207,6 +231,21 @@ func(u *UI) startPolling(){
   }
  }()
 }
+func(u *UI) notifyNewMessages(events []beacon.Message){
+ if len(events)==0{return}
+ // Aggregate by buddy to avoid a burst of one desktop notification per
+ // message after resuming from an offline period.
+ counts:=map[int]int{}
+ for _,message:=range events{counts[message.SenderID]++}
+ for _,buddy:=range u.buddies{
+  count:=counts[buddy.ID]
+  if count==0 || bool(buddy.Muted){continue}
+  detail:="sent you a Beacon IM"
+  if count>1{detail=fmt.Sprintf("sent you %d Beacon IMs",count)}
+  u.app.SendNotification(fyne.NewNotification("Beacon · "+buddy.Name(),buddy.Name()+" "+detail))
+  if u.app.Preferences().BoolWithFallback("autoOpenIM",false){u.openChat(buddy)}
+ }
+}
 func(u *UI) stopPolling(){if u.pollStop!=nil{close(u.pollStop);u.pollStop=nil}}
 func(u *UI) applyRoster(newBuddies []beacon.Buddy,newGroups []beacon.Group){
  old:=map[int]beacon.Buddy{}
@@ -215,10 +254,6 @@ func(u *UI) applyRoster(newBuddies []beacon.Buddy,newGroups []beacon.Group){
   if prev,exists:=old[b.ID];exists&&u.firstRoster&&!bool(b.Muted){
    if prev.Presence=="offline"&&b.Presence!="offline"{
     u.app.SendNotification(fyne.NewNotification("Beacon · Buddy signed on",b.Name()+" is online"))
-   }
-   if b.UnreadCount>prev.UnreadCount {
-    u.app.SendNotification(fyne.NewNotification("Beacon · New IM",b.Name()+" sent a message"))
-    if u.app.Preferences().BoolWithFallback("autoOpenIM",false){u.openChat(b)}
    }
   }
  }

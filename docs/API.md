@@ -100,3 +100,12 @@ When first enabling Android background monitoring, the service requests `GET /ap
 Windows/Linux Go clients consume the same authenticated endpoints used by Android and the browser; **no separate Go server or protocol** is required. Their `internal/beacon` transport validates the server URL, limits API response sizes, rejects cross-origin redirects and uses bearer tokens from an optional OS keyring.
 
 Historically, SQLite-backed JSON sometimes serializes `is_admin` and `muted` as numeric `0`/`1`, while login may return JSON `true`/`false`. The Go models handle both safely. The v0.8.0 buddy roster also exposes per-account `nickname`, `group_id`, `group_name` and `muted`, correcting missing fields from earlier releases.
+
+
+## Event cursor and read-state contract
+
+`GET /api/events/latest` returns `{"last_message_id":N}` scoped to the authenticated account. Use it as an initial baseline when first enabling live notifications, so historical messages don't generate new alerts.
+
+`GET /api/events?after=N&limit=P` returns ascending message IDs and `next_cursor` (the last returned ID, or N when there are no events). The client's cursor advances **only after messages have been accepted by its local delivery callback**. It rejects non-monotonic IDs or cursor mismatches; a temporary failure must not skip queued messages.
+
+**Receipt semantics:** `POST /api/conversations/{peer_id}/read` with `{"through_id":N}` should be sent only after that peer's incoming message is displayed in an active chat view, never as a side-effect of background polling or merely downloading history. This ensures that Windows, Linux and Android remain synchronized without one background device improperly clearing another's unread counts. See [Multi-device Delivery](MULTI-DEVICE-DELIVERY.md).

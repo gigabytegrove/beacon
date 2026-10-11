@@ -63,3 +63,10 @@ The buddy-list renderer skips expensive UI rebuilds when the roster hasn't chang
 ## Build on a trusted self-hosted CI runner
 
 GitHub's Windows/Linux workflows can now target registered Windows/Linux self-hosted runners via manual `runner=self-hosted` selection or the `BEACON_USE_SELF_HOSTED_RUNNERS=true` repository variable. This is a **real compile-and-test pipeline**, not a simulated build. End-user PCs still require only the compiled Go application; the build workers require Go, GCC/MinGW and graphics development headers. See [runner setup](../../docs/SELF-HOSTED-BUILD-RUNNERS.md).
+
+
+## Resumable event synchronization
+
+The Go client now retrieves persisted message events by monotonic ID, starting from the account's latest message ID at login. Each successful poll advances a per-session local cursor; later polls catch up on events missed during a LAN outage. Notifications are grouped by buddy, observe mute settings and can open an IM automatically if enabled. Unread badge counts remain server-managed and **do not drive message delivery**.
+
+When an IM is open, incoming history is displayed first, then the client sends a read receipt; closing the window mid-request does not mark undisplayed messages read. The event transport tests have passed locally with Go's race detector, but this is **not yet a verified Fyne GUI build**. See [Multi-device Delivery](../../docs/MULTI-DEVICE-DELIVERY.md).

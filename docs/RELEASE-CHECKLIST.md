@@ -92,3 +92,16 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 
 - [ ] Self-hosted worker selection is blocked for `pull_request`; only trusted `push` or owner-triggered manual builds may execute on private builders.
 - [ ] Download release artifacts within the configured 7-day retention window.
+
+
+## Offline event sync and read receipt acceptance
+
+- [ ] Go event transport tests pass with the race detector, including partial delivery and HTTP 503 retry without duplicates.
+- [ ] Windows/Linux event notifications remain correct when unread is cleared on Android before the desktop poll.
+- [ ] After offline reconnection, message notifications are batched by sender rather than one toast per missed message.
+- [ ] Muting a buddy suppresses desktop sign-on/new-IM notifications but does not discard stored messages.
+- [ ] Android foreground UI **renders** messages before sending server read receipts; Android background monitor never marks messages read.
+- [ ] Go conversation closed during a fetch does not acknowledge messages or redraw a stale window.
+- [ ] First login/monitor enable seeds latest cursor, avoiding months of old-message notification replay.
+- [ ] A revoked session discards its event cursor and clears remembered credentials.
+- [ ] Real Windows, Linux and Android binaries are successfully built and installed. Passing transport tests alone does not satisfy this gate.

@@ -24,6 +24,7 @@ type Chat struct{
  input *widget.Entry
  stop chan struct{}
  lastID int
+ lastRead int
  lastTyping time.Time
 }
 
@@ -84,11 +85,8 @@ func(ch *Chat) load(u *UI){
  c,cancel:=ctx()
  items,err:=ch.client.History(c,ch.peer.ID)
  typing,errTyping:=ch.client.Typing(c,ch.peer.ID)
- if err==nil&&len(items)>0{
-  newest:=0
-  for _,m:=range items{if m.SenderID==ch.peer.ID&&m.ID>newest{newest=m.ID}}
-  if newest>0{_=ch.client.MarkRead(c,ch.peer.ID,newest)}
- }
+ // Read state is only updated after displaying the conversation
+ // on the UI thread, never while a network request is still in flight.
  cancel()
  if err!=nil{fyne.Do(func(){if u.api==ch.client{ch.typing.SetText("Network error: "+err.Error())}});return}
  var output strings.Builder
@@ -100,14 +98,33 @@ func(ch *Chat) load(u *UI){
  if output.Len()==0{output.WriteString("No messages yet. Say hello!")}
  final:=output.String()
  latest:=0;if len(items)>0{latest=items[len(items)-1].ID}
+ latestIncoming:=0
+ for _,m:=range items {
+  if m.SenderID==ch.peer.ID && m.ID>latestIncoming {latestIncoming=m.ID}
+ }
  fyne.Do(func(){
-  if u.api!=ch.client{return}
+  if u.api!=ch.client || u.chats[ch.peer.ID]!=ch{return}
   if latest!=ch.lastID||ch.lastID==0 {
    ch.history.SetText(final)
    ch.lastID=latest
    ch.scroll.ScrollToBottom()
   }
   if errTyping==nil&&typing{ch.typing.SetText(ch.peer.Name()+" is typing…")}else{ch.typing.SetText("")}
+  if latestIncoming>ch.lastRead {
+   id:=latestIncoming
+   ch.lastRead=id
+   go func(){
+    requestCtx,cancelRequest:=ctx()
+    defer cancelRequest()
+    if e:=ch.client.MarkRead(requestCtx,ch.peer.ID,id);e!=nil {
+     fyne.Do(func(){
+      // Restore last-read state for a later retry, but do not rewind
+      // if the user has already viewed newer messages in this window.
+      if ch.lastRead==id {ch.lastRead=0}
+     })
+    }
+   }()
+  }
  })
 }
 func(u *UI) searchChat(chat *Chat){

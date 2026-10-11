@@ -66,6 +66,8 @@ public final class MainActivity extends Activity {
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Map<Integer, Integer> previousUnread = new HashMap<>();
+    // Only acknowledge messages after they have been rendered on screen.
+    private final Map<Integer, Integer> displayedReadCursors = new HashMap<>();
     private final Set<Integer> rendered = new HashSet<>();
     private final ArrayList<JSONObject> knownBuddies = new ArrayList<>();
     private final ArrayList<JSONObject> knownGroups = new ArrayList<>();
@@ -285,6 +287,7 @@ public final class MainActivity extends Activity {
     }
 
     private void loginScreen(String message) {
+        displayedReadCursors.clear();
         pollInFlight.set(false);
         activeBuddy = null;
         LinearLayout layout = vertical();
@@ -421,17 +424,6 @@ public final class MainActivity extends Activity {
                     (JSONArray) request("/messages/" + peer, "GET", null);
             JSONObject typing = peer == null ? null :
                     (JSONObject) request("/typing/" + peer, "GET", null);
-            if (messages != null) {
-                int lastIncoming = 0;
-                for (int i = 0; i < messages.length(); i++) {
-                    JSONObject m = messages.getJSONObject(i);
-                    if (m.optInt("sender_id") == peer)
-                        lastIncoming = Math.max(lastIncoming, m.optInt("id"));
-                }
-                if (lastIncoming > 0)
-                    request("/conversations/" + peer + "/read", "POST",
-                            makeBody("through_id", lastIncoming));
-            }
             return new Snapshot(buddies, groups, messages, typing, peer);
         }, (result, error) -> {
             pollInFlight.set(false);
@@ -453,7 +445,10 @@ public final class MainActivity extends Activity {
             }
             initializedUnread = true;
             if (activeBuddy == null) renderRoster(snap);
-            else if (snap.peer != null && snap.peer.equals(activeBuddy)) renderChat(snap);
+            else if (snap.peer != null && snap.peer.equals(activeBuddy)) {
+                renderChat(snap);
+                markRenderedConversationRead(snap.peer, snap.messages);
+            }
         });
     }
 
@@ -564,6 +559,25 @@ public final class MainActivity extends Activity {
         });
         setRoot(layout);
         poll();
+    }
+
+
+    private void markRenderedConversationRead(int peer, JSONArray messages) {
+        if (messages == null || messagesList == null || !foreground) return;
+        int newest = 0;
+        for (int i = 0; i < messages.length(); i++) {
+            JSONObject message = messages.optJSONObject(i);
+            if (message != null && message.optInt("sender_id") == peer)
+                newest = Math.max(newest, message.optInt("id"));
+        }
+        if (newest <= displayedReadCursors.getOrDefault(peer, 0)) return;
+        final int through = newest;
+        displayedReadCursors.put(peer, through);
+        async(() -> request("/conversations/" + peer + "/read", "POST",
+                makeBody("through_id", through)), (response, error) -> {
+            if (error != null && displayedReadCursors.getOrDefault(peer, 0) == through)
+                displayedReadCursors.remove(peer);
+        });
     }
 
     private void renderChat(Snapshot snap) {

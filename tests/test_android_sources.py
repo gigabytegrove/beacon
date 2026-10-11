@@ -39,3 +39,17 @@ def test_native_android_account_and_search_interfaces():
     service = (JAVA / "BeaconMonitorService.java").read_text()
     assert "MainActivity.isUiVisible" in service
     assert "beacon_peer_id" in service
+
+def test_android_read_receipts_follow_visible_render():
+    """Read receipts must not clear unread counts before messages are displayed."""
+    activity = (JAVA / "MainActivity.java").read_text()
+    method_start = activity.index("private void poll()")
+    method_end = activity.index("private static final class Snapshot", method_start)
+    network_poll = activity[method_start:method_end]
+    assert 'request("/conversations/" + peer + "/read"' not in network_poll
+    assert "renderChat(snap);" in network_poll
+    assert "markRenderedConversationRead(snap.peer, snap.messages);" in network_poll
+    method = activity[activity.index("private void markRenderedConversationRead("):]
+    assert "displayedReadCursors" in method
+    assert "if (messages == null || messagesList == null || !foreground) return;" in method
+    assert 'request("/conversations/" + peer + "/read"' in method

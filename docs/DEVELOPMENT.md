@@ -89,3 +89,10 @@ Blocked GitHub Actions: follow [runner recovery](GITHUB-ACTIONS-RUNNER-RECOVERY.
 CI workflow files are `.github/workflows/{ci,windows,linux,android}.yml`. All four enforce tests/build/artifact checks regardless of location. The default `runs-on` is hosted; when the GitHub Actions repository variable `BEACON_USE_SELF_HOSTED_RUNNERS=true` is set or the manual-dispatch `runner=self-hosted` input is chosen, labels `beacon-windows` and `beacon-linux` select dedicated build workers. Do not use the production Dokploy host as a general-purpose Actions runner. See [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md).
 
 Self-hosted runner selection is **not permitted for pull_request events** to avoid executing untrusted PR code on private machines. Uploadable EXE/tar.gz/APK artifacts have 7-day retention; store release checksums separately when they are fully verified.
+
+
+## Event cursor transport: independently executed Go tests
+
+`clients/desktop-go/internal/beacon/sync.go` introduces `LatestEventID`, `EventBatch`, and `CatchUp`. The standard-library `httptest` regressions in `sync_test.go` verify account cursor seeding, multi-page catch-up, rejecting repeated/out-of-order events and invalid cursors, retry without duplicate delivery after a 503, callback interruption, bounded pages and cancellation. These tests were run locally with `go test -race -count=1 ./internal/beacon` and `go vet ./internal/beacon`.
+
+This **only verifies the Go API package**, not the Fyne windows or Android APK. The full Fyne/Gradle build gate still must execute successfully before client downloads are considered accepted. See [Multi-device Delivery](MULTI-DEVICE-DELIVERY.md).
