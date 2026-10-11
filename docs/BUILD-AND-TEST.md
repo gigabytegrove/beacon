@@ -61,3 +61,9 @@ The Windows, Linux and Android workflows support manual **workflow_dispatch** as
 Deploy the Docker server first through Dokploy's Git Compose service (`./compose.dokploy.yaml`); never require a clone under `/root/beacon`. From a LAN machine run the Probe to verify the server can be reached. Then install the compiled GUI clients and manually test two users, independent devices, buddy photos, sign-on/off, away, typing, messages, search, notification windows, background behavior and logout/revocation. See [Release Checklist](RELEASE-CHECKLIST.md).
 
 **Do not declare Beacon production-ready until the clients actually compile and run on Windows, Linux and Android.**
+
+## Stabilization-specific tests
+
+The new `tests/test_connection_and_presence.py` exercises SQLite connection closure, rollback and multi-device buddy presence, including the batched query count. These are tests to run, **not** tests reported as passing. Use `python -m pytest -q` on a build workstation with the project requirements installed. The Go desktop's unauthorized-session recovery and scroll-preserving refresh also require actual Windows/Linux GUI testing. When GitHub jobs fail with no runner, use the documented manual build scripts; do not interpret no-step failures as successful builds.
+
+For step-by-step account/permission checks when GitHub never assigns a runner, use [GitHub Actions runner recovery](GITHUB-ACTIONS-RUNNER-RECOVERY.md). Zero-step failures do not establish a source-code build failure.

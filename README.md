@@ -59,3 +59,16 @@ No license has been granted for this private repository; the owner retains right
 GitHub-hosted runners are still failing before they execute any steps. The project now includes explicit Windows/Android PowerShell and Linux Bash builders under `scripts/`, and the Windows/Linux CI workflows use those same builders. The compiled GUI binaries must be produced on build workstations with Go/Fyne build prerequisites installed, **not** on ordinary user computers.
 
 A separate dependency-free Go **Beacon Probe** is available for preflight testing of server health and authenticated APIs; it is **not** a graphical messenger. See [Build and Test](docs/BUILD-AND-TEST.md) and [Probe](tools/beacon-probe/README.md). Actual EXE/APK GUI downloads should not be claimed until built and tested.
+
+## Desktop and server stabilization (October 11, 2026)
+
+A coordinated reliability pass targets early Windows/Linux/Android testing without changing the deployment architecture:
+
+- Server SQLite connections now close after each unit of work and roll back cleanly on failures.
+- Buddy and directory presence are resolved with a small number of batch queries rather than one database connection per contact.
+- Go desktop roster refreshes preserve scroll state when the roster has not changed, and a revoked/expired device token returns the client to the login screen instead of endlessly retrying.
+- Added targeted regression tests for connection scope, transaction rollback, multi-device presence, roster account isolation and batch-query behavior.
+
+**Test confidence:** These changes are source-level and have automated tests committed, but GitHub-hosted Actions continues to fail before assigning runners. Keep the client packages and server release labeled *unverified* until the actual builds and tests execute.
+
+For runner-startup troubleshooting, see the [GitHub Actions recovery guide](docs/GITHUB-ACTIONS-RUNNER-RECOVERY.md).

@@ -137,10 +137,32 @@ class ReadUpdate(BaseModel):
     through_id: int = Field(ge=0)
 
 
-def person_dict(row):
-    item = dict(row)
-    item["presence"] = presence(row["id"])
-    return item
+def attach_presence(db, rows):
+    """Resolve presence for an entire roster in one SQLite query, not N queries."""
+    items = [dict(row) for row in rows]
+    if not items:
+        return items
+    user_ids = [item["id"] for item in items]
+    now = int(time.time())
+    statuses = {}
+    # SQLite supports at least 999 bind parameters even on older deployments.
+    for offset in range(0, len(user_ids), 400):
+        chunk = user_ids[offset:offset + 400]
+        placeholders = ",".join("?" for _ in chunk)
+        active = db.execute(
+            "SELECT user_id,presence FROM sessions WHERE user_id IN (" + placeholders +
+            ") AND expires_at>? AND last_seen>?",
+            (*chunk, now, now - PRESENCE_TTL),
+        ).fetchall()
+        for session in active:
+            candidate = session["presence"]
+            previous = statuses.get(session["user_id"], "offline")
+            priority = {"offline": 0, "away": 1, "busy": 2, "available": 3}
+            if priority.get(candidate, 0) > priority.get(previous, 0):
+                statuses[session["user_id"]] = candidate
+    for item in items:
+        item["presence"] = statuses.get(item["id"], "offline")
+    return items
 
 
 @router.get("/directory")
@@ -152,7 +174,7 @@ def directory(request: Request):
             "SELECT id,username,display_name,status_text,avatar FROM users WHERE id<>? ORDER BY display_name",
             (actor["id"],)
         ).fetchall()
-    return [person_dict(row) for row in rows]
+        return attach_presence(db, rows)
 
 
 @router.get("/buddies")
@@ -171,7 +193,7 @@ def buddies(request: Request):
         LEFT JOIN buddy_groups g ON g.owner_id=b.owner_id AND g.id=b.group_id
         WHERE b.owner_id=? ORDER BY group_name COLLATE NOCASE,u.display_name
         """, (actor["id"], actor["id"], actor["id"])).fetchall()
-    return [person_dict(row) for row in rows]
+        return attach_presence(db, rows)
 
 
 @router.post("/buddies/{buddy_id}", status_code=201)

@@ -67,3 +67,7 @@ Windows and Linux clients are now built as Go/Fyne executables. **Nothing about 
 ## Early client testing
 
 Before testing the desktop/mobile apps, use the independent [Beacon Probe](../tools/beacon-probe/README.md) to verify `/health` and optionally the authenticated API from a LAN workstation. The probe is a compiled Go diagnostic, not the GUI client. See [Build and Test](BUILD-AND-TEST.md) for handling blocked GitHub Actions and producing real client installers outside the Dokploy container.
+
+## SQLite/presence stabilization
+
+The backend now uses bounded SQLite connection lifetimes and a presence index added at application startup. This change is compatible with the existing `beacon-data` persistent volume; it does **not** require a new container, port, Compose filename or standalone checkout. **Back up `beacon-data` before deploying** a source commit containing database migrations, then redeploy the existing GitHub-backed Dokploy Compose service from `main`. Confirm health and two-device presence after rollout.

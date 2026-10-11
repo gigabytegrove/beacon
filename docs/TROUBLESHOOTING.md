@@ -65,3 +65,7 @@ On Windows/Linux, use the Profile and Devices buttons on the buddy list or Searc
 **No notifications/tray:** OS desktop environments vary. In Preferences, enable/disable automatic IM windows or close-to-tray behavior. If a tray isn't exposed by the desktop environment, leave close-to-tray disabled. Beacon can still exchange messages when its roster remains open.
 
 **Server response errors:** Re-deploy the Dokploy server from the same GitHub branch. Prior builds could omit nickname/group/muted fields in the buddy roster; v0.8.0 corrects this on the server. Android remains native Java and is deployed independently of the Go desktop package.
+
+## Expired device sessions and heavy roster polling
+
+When Beacon's server returns 401 for a revoked/expired token, the Go desktop now clears its secure saved login and returns to the sign-in screen. This is different from a temporary LAN interruption, which keeps the current session and displays a connectivity warning. For large buddy lists, server presence is now batched; if you see server latency, check Dokploy resource usage, `/health`, and the mounted SQLite volume rather than repeatedly restarting the container.

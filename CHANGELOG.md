@@ -1,5 +1,16 @@
 # Beacon changelog
 
+## v0.8.0 stabilization — server connection lifecycle, batched presence and desktop UX
+
+- Close every SQLite connection deterministically and commit/rollback within its context; avoid leaked descriptors under frequent polling.
+- Query presence for whole buddy and directory rosters in batches with a migration-safe sessions index, maintaining the original available > busy > away > offline precedence across multiple devices.
+- Avoid rebuilding the Go buddy-list widget tree when contacts and groups are unchanged, preserving scroll position and lowering GUI churn.
+- Return the Go client to login on a revoked or expired session during polling, clearing saved OS credentials and closing stale IM windows.
+- Add regression tests for close/rollback, roster isolation, two simultaneous devices, query batching and HTTP authentication.
+- Update architecture, deployment, client and test documentation. No new third-party services or containers.
+- **Validation pending:** CI jobs still fail before runner startup; committed tests have not been executed in GitHub Actions.
+
+
 ## 0.8.0 build-readiness follow-up (no GUI release declared)
 
 - Added one-command Windows Go/Fyne desktop builder with prerequisite validation, Go API tests and versioned executable checksum output.

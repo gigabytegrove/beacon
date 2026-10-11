@@ -6,6 +6,8 @@ import (
  _ "embed"
  "encoding/base64"
  "encoding/json"
+ "errors"
+ "reflect"
  "fmt"
  "image"
  _ "image/jpeg"
@@ -185,7 +187,21 @@ func(u *UI) startPolling(){
     fyne.Do(func(){if u.api!=client{return};u.applyRoster(friends,groups)})
    }else{
     if err==nil{err=e2}
-    fyne.Do(func(){if u.api==client&&u.network!=nil{u.network.SetText("Connection problem: "+err.Error())}})
+    fyne.Do(func(){
+     if u.api!=client{return}
+     if errors.Is(err,beacon.ErrUnauthorized){
+      u.stopPolling()
+      clearLogin()
+      u.api=nil
+      for _,chat:=range u.chats{chat.window.Close()}
+      u.chats=map[int]*Chat{}
+      u.root.SetCloseIntercept(nil)
+      u.showLogin()
+      dialog.ShowInformation("Beacon session expired","This device was signed out or its session expired. Please sign in again.",u.root)
+      return
+     }
+     if u.network!=nil{u.network.SetText("Connection problem: "+err.Error())}
+    })
    }
    select{case <-stop:return;case <-tick.C:}
   }
@@ -196,7 +212,7 @@ func(u *UI) applyRoster(newBuddies []beacon.Buddy,newGroups []beacon.Group){
  old:=map[int]beacon.Buddy{}
  for _,b:=range u.buddies{old[b.ID]=b}
  for _,b:=range newBuddies{
-  if prev,exists:=old[b.ID];exists&&u.firstRoster&&!b.Muted{
+  if prev,exists:=old[b.ID];exists&&u.firstRoster&&!bool(b.Muted){
    if prev.Presence=="offline"&&b.Presence!="offline"{
     u.app.SendNotification(fyne.NewNotification("Beacon · Buddy signed on",b.Name()+" is online"))
    }
@@ -206,8 +222,11 @@ func(u *UI) applyRoster(newBuddies []beacon.Buddy,newGroups []beacon.Group){
    }
   }
  }
+ unchanged:=reflect.DeepEqual(u.buddies,newBuddies)&&reflect.DeepEqual(u.groups,newGroups)&&u.firstRoster
  u.buddies=newBuddies;u.groups=newGroups;u.firstRoster=true
  if u.network!=nil{u.network.SetText("● Connected to "+u.api.Server())}
+ // Preserve scroll position and avoid allocating hundreds of widgets on every poll.
+ if unchanged{return}
  u.roster.RemoveAll()
  sorted:=append([]beacon.Buddy(nil),newBuddies...)
  sort.Slice(sorted,func(i,j int)bool{
