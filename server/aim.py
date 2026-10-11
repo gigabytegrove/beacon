@@ -162,12 +162,14 @@ def buddies(request: Request):
     with m.connection() as db:
         rows = db.execute("""
         SELECT u.id,u.username,u.display_name,u.avatar,u.status_text,
+               b.nickname,b.group_id,b.muted,COALESCE(g.name,'Buddies') AS group_name,
                (SELECT COUNT(*) FROM messages msg WHERE msg.sender_id=u.id
                 AND msg.recipient_id=? AND msg.id>COALESCE(
                   (SELECT last_read_id FROM read_cursors
                    WHERE user_id=? AND peer_id=u.id),0)) AS unread_count
         FROM buddies b JOIN users u ON u.id=b.buddy_id
-        WHERE b.owner_id=? ORDER BY u.display_name
+        LEFT JOIN buddy_groups g ON g.owner_id=b.owner_id AND g.id=b.group_id
+        WHERE b.owner_id=? ORDER BY group_name COLLATE NOCASE,u.display_name
         """, (actor["id"], actor["id"], actor["id"])).fetchall()
     return [person_dict(row) for row in rows]
 

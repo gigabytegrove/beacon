@@ -1,5 +1,7 @@
 # Troubleshooting
 
+**Desktop update (v0.8.0):** Windows and Linux use the new **Go/Fyne** client under `clients/desktop-go`. Old Python/Tkinter startup commands, PyInstaller errors, and the `clients/desktop/requirements-*.txt` are legacy reference material, **not** installation requirements for end users. See [Go Desktop Client](../clients/desktop-go/README.md).
+
 **Dokploy installations:** The absence of `/root/beacon` is expected; Dokploy fetches the Git repository itself. Use a Compose service with source `gigabytegrove/beacon`, branch `main`, Compose Path `./compose.dokploy.yaml`, admin password in the Environment tab, and inspect Dokploy's Deployments and Logs tabs. See [DOKPLOY.md](DOKPLOY.md).
 
 ## Server won't start
@@ -53,3 +55,13 @@ Extract the Linux release tarball and run `./install.sh` for an unprivileged, pe
 ## Client profile, device manager, or conversation search
 
 On Windows/Linux, use the Profile and Devices buttons on the buddy list or Search history in an IM window. On Android, open the Account menu for Profile/Devices and Search inside a conversation. Searches need at least two characters; they only return messages involving the signed-in account. 401 errors typically indicate revoked/expired sessions.
+
+## Go client not launching
+
+**Windows:** Use the verified versioned EXE from a successful Windows workflow. No Python/pip/Go installation is needed. An unsigned development binary may trigger SmartScreen; verify the artifact's origin and checksum. If secure remembered login fails, sign in again and confirm Windows Credential Manager is available.
+
+**Linux:** Extract the versioned Go tarball, run `./install.sh` as your normal user, and launch `beacon` via your app menu or `~/.local/bin/beacon`. A graphical display and normal OpenGL/window-system shared libraries are required. Install missing system graphics packages using your distribution package manager if the loader reports a missing library. No Python runtime is required. Linux remembered login needs a Secret Service/keyring provider; it is optional, never plaintext.
+
+**No notifications/tray:** OS desktop environments vary. In Preferences, enable/disable automatic IM windows or close-to-tray behavior. If a tray isn't exposed by the desktop environment, leave close-to-tray disabled. Beacon can still exchange messages when its roster remains open.
+
+**Server response errors:** Re-deploy the Dokploy server from the same GitHub branch. Prior builds could omit nickname/group/muted fields in the buddy roster; v0.8.0 corrects this on the server. Android remains native Java and is deployed independently of the Go desktop package.

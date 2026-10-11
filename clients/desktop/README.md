@@ -1,43 +1,9 @@
-# Beacon Desktop — Native Windows and Linux (v0.7.0)
+# Legacy Beacon Python desktop prototype — Deprecated
 
-The Beacon desktop client is a Python 3/Tkinter application built around the classic buddy list.
+**This is NOT the primary Beacon desktop application.** The previous Windows/Linux prototype was implemented in Python/Tkinter without an explicit requirement to use Python. That was a poor choice for Beacon's install-and-run goal.
 
-- Sign in with server URL, username/password and unique device name
-- The buddy list stays in its own window; double-click a contact to open a separate IM window
-- Presence indicators, status selector, unread counts, sign-on and new-message pop-up notifications
-- Collapsible buddy groups with a context menu to rename/delete groups
-- Right-click a buddy to set a local nickname, move to a group, mute alerts or remove them
-- **+ Group** creates a new group; **+ Buddy** finds an existing account by username
-- **Alerts** toggles sound; **IM pop-ups** toggles automatic new-message windows
-- Photos use optional Pillow for JPEG/WebP thumbnails, or Tkinter's built-in PNG support
+From v0.8.0, **Windows and Linux use the native Go/Fyne client** at [clients/desktop-go](../desktop-go/README.md). The old Python source remains temporarily in this directory for reference and feature-parity audits. It is **not packaged into the Windows EXE or Linux archive**, not needed to use Beacon, and is not an ongoing primary feature target.
 
-Requirements: Python 3.10+, Tkinter, running Beacon Docker server. Install Pillow for full photo support: \`python3 -m pip install Pillow\`.
+All desktop builds and user instructions should reference Go. Once the replacement has passed native runtime acceptance checks and feature parity, this legacy code can be retired as a separate approved cleanup.
 
-Windows: \`py -3 clients/desktop/beacon_desktop.py\`
-
-Linux: \`python3 clients/desktop/beacon_desktop.py\` (install \`python3-tk\` if your distribution omits Tkinter).
-
-The client polls the server every three seconds while running. Its account token is not written to disk. This early version does not have a system tray, auto-start or native OS notification integration. Android will be a separate native client.
-
-## Windows v0.7.0 — EXE, tray and protected sessions
-
-Windows uses the same Beacon Docker server as Android. With the optional Windows packages installed, the client keeps polling in a system tray after its roster is closed, provides **Open Beacon** and **Quit Beacon** actions, and attempts Windows OS toast notifications for sign-ons and incoming IMs.
-
-The sign-in screen offers **Keep me signed in**. If enabled, Beacon protects the token with Windows DPAPI under the current Windows user and stores it at `%LOCALAPPDATA%\Beacon\session.bin`. On restart it validates the session against the server before showing the buddy list. Logout and Quit remove the encrypted token and revoke the server session. Linux retains memory-only login sessions and ordinary window-close behavior.
-
-Build on Windows with Python 3.12:
-
-~~~powershell
-py -3 -m pip install -r clients/desktop/requirements-windows.txt
-py -3 -m PyInstaller --clean --onefile --windowed --name Beacon --collect-all pystray --collect-all winotify clients/desktop/beacon_desktop.py
-~~~
-
-After a successful local build: `dist/Beacon.exe`. The [Windows Actions workflow](../../.github/workflows/windows.yml) renames it `Beacon-Windows-0.7.0.exe` and uploads it as a build artifact. **A CI workflow in the repository is not a confirmed EXE** until it runs successfully. Windows may restrict toast display based on OS notification settings; Beacon falls back to its Tk pop-up when possible.
-
-## Linux v0.7.0 and native-client parity
-
-Linux now shares its platform adapter with Windows. Install `clients/desktop/requirements-linux.txt` and your distro's Tkinter package. A compatible system tray and native `notify-send` notifications are optional; where missing the client falls back to regular Tk UI. Secure remembered login uses an available Linux secret-service/keyring, not a plaintext token file. Sounds and incoming-window preferences persist separately.
-
-Both Windows and Linux expose **My Profile**, **Signed-in Devices**, and **Search history** in native dialogs. Linux CI packages `Beacon-Linux-0.7.0.tar.gz` with a binary, XDG entry and per-user `install.sh`. Windows CI names the executable `Beacon-Windows-0.7.0.exe`. See [platform build instructions](../../docs/PLATFORM-BUILDS.md). Availability depends on successful CI and real-device verification.
-
-Windows and Linux v0.7.0 also include **Change profile photo** (requires Pillow, uses sanitized JPEG upload) and **Change password** (revokes other device sessions) in the Profile dialog.
+There is no requirement for Beacon end users to install Python, pip, Tkinter or PyInstaller.

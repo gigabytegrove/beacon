@@ -69,3 +69,7 @@ The Android Account menu now includes **My profile and photo** (display name, aw
 The Activity now prevents overlapping foreground refresh requests and does not persist a stale foreground/visible flag across process crashes. An incoming IM notification can open its sender's conversation after the saved session is authenticated. The background LAN monitor is still opt-in, notification-visible and may be interrupted by Android battery restrictions or LAN disconnections.
 
 After a **successful** Android Gradle build, the expected APK filename is `Beacon-Android-0.7.0-debug.apk`. Source code and workflow configuration alone do not establish that this APK was built or tested on hardware.
+
+## Desktop clients in v0.8.0
+
+Windows and Linux are now **Go/Fyne native compiled applications**, not Python/Tkinter. This does not change Android's own native Java APK. All three platforms use the same Dokploy-hosted Beacon API, including multi-device sessions and buddy synchronization. The server has been updated to include nickname/group/mute fields consistently for both Android and Go desktops.

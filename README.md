@@ -1,76 +1,54 @@
 # Beacon
 
-**Your people. Your network.** Beacon is a LAN-first, self-hosted instant messenger with the familiar experience of AOL Instant Messenger: a buddy list, personal photos, availability, away messages, typing indicators, individual IM windows, and sign-on alerts. It is a distinct project, entirely independent of Monita.
+**Your people. Your network.** Beacon is a LAN-first, self-hosted instant messenger inspired by classic AOL Instant Messenger: compact buddy list, profile photos, online/away/busy status, sign-on notices, typing indicators and separate conversation windows. **Beacon is independent of Monita.**
 
-The server runs as **one Docker container with a persistent SQLite volume**. Clients communicate through a JSON HTTP API and WebSocket events. No external hosted messaging service is needed.
+## Current development release: 0.8.0 — Native Go desktop migration
 
-## Current version: 0.7.0 (development)
+**Windows and Linux use a shared Go/Fyne source code**, built as native executables. Users do **not** need Python, pip, a Go SDK, or to install Fyne in order to run a successfully built desktop client. The legacy Python/Tkinter prototype is retained temporarily under `clients/desktop/` for reference **only**; it is not the default client, not the release build and not required on user machines.
 
-| Capability | Web | Windows/Linux desktop | Android |
-| --- | --- | --- | --- |
-| Username/password sign-in | Implemented | Implemented | Implemented in source |
-| Personal buddy list and groups | Yes | Yes | Yes |
-| Buddy photos, nicknames, status | Yes | Yes | Yes |
-| Separate IM conversation windows | Browser pop-ups | Native windows | Native conversation screen |
-| One-to-one messages and history | Yes | Yes | Yes |
-| Typing indicator | WebSocket | HTTP polling | HTTP polling |
-| Online/away/busy status | Yes | Yes | Yes, while active |
-| Multi-device sessions and unread synchronization | Yes | Yes | Yes |
-| Sign-on and message alerts | Browser, permission-dependent | Windows OS toast or Tk alert while running in tray | Foreground notices and opt-in background LAN monitor |
-| Notifications while app is fully closed | No | No | **Not implemented** |
-| Installable distributables | Browser | Windows EXE packaging workflow (requires successful CI) | Android APK packaging workflow (requires successful CI) |
-| WebRTC audio/video | Future | Future | Future |
+**Android remains a native Java/Android application**, which installs as an APK. The shared messaging **server remains Python/FastAPI in one Docker container**, deployed through Dokploy. Converting the server to Go is outside this client migration.
 
-**Release confidence:** The server had a Python import syntax defect in v0.4.0; v0.5.0 includes the correction, migration/security tests, and CI checks. CI runners have previously failed before running any steps in this private repository; check the current Actions status and validate on a staging instance before production deployment. Windows EXE and Android APK builds require successful platform CI and real device testing.
+| Platform | Primary implementation | Distribution target |
+| --- | --- | --- |
+| Windows | **Go 1.23+ / Fyne 2.8.1** | `Beacon-Windows-0.8.0.exe` |
+| Linux | **Same Go/Fyne code** | `Beacon-Linux-0.8.0.tar.gz` including binary and desktop entry |
+| Android | Native Android Java | Android 0.7.x debug APK workflow |
+| Web | HTML/CSS/JavaScript | Served by the Docker server |
+| Server | Python/FastAPI/SQLite | **GitHub-backed Dokploy Docker Compose** |
 
-## Deploy with Dokploy (recommended)
+The Go desktop code includes authenticated sign-in, independent device sessions, secure *optional* saved login through OS credential vaults, buddy groups and aliases, presence, contact avatars, pop-out individual conversations, unread counts, typing indicators, sign-on/message notifications, buddy management, profile/photo/password changes, device revocation and message-history search. Fyne provides platform-native-style widgets, multiple windows and system tray support.
 
-**Beacon is a Git-backed Dokploy Docker Compose service.** No `/root/beacon` checkout or manual `docker compose up` is necessary on your Docker host.
+**Verification:** Source code and CI workflows are committed as development artifacts. Compiled Windows/Linux executables are **not considered available or validated unless their actual workflows successfully run and the binaries pass target-platform testing**. Earlier GitHub Actions runs in this private repository failed before runners were allocated. Linux binaries may depend on typical system graphics/X11/OpenGL libraries provided by the operating system; no Python runtime is required.
 
-In Dokploy choose **Create Service → Compose → Docker Compose** (not Stack), GitHub source `gigabytegrove/beacon`, branch `main`, **Compose Path `./compose.dokploy.yaml`**. Set `BEACON_ADMIN_PASSWORD` (unique, 12+ characters) in Dokploy's Environment tab, then **Deploy**.
+## Deploy the server with Dokploy
 
-The service is built from GitHub, uses external `dokploy-network` for optional Dokploy Domains, publishes configurable port 8765 on the host, and persists users and messages in named volume `beacon-data`. Set `BEACON_BIND_IP` to the host's LAN interface or firewall-restrict `0.0.0.0`. For reverse-proxy-only mode use `127.0.0.1` with a Dokploy Domain pointed to container port 8765. See [Dokploy deployment and troubleshooting](docs/DOKPLOY.md).
+This is the required server deployment method. In Dokploy create **Compose → Docker Compose** (not Stack), connect private GitHub repository `gigabytegrove/beacon`, branch `main`, with **Compose Path `./compose.dokploy.yaml`**. In Environment set `BEACON_ADMIN_PASSWORD` to a unique 12+ character secret. Click **Deploy**. The service uses external `dokploy-network` and stable persistent named volume `beacon-data`; the container listens on port 8765.
 
-### Standalone Docker Compose (non-Dokploy)
+**Do not try to clone the repository into `/root/beacon` or run shell Compose commands on the Dokploy server.** Update the Compose service by redeploying GitHub `main` from the Dokploy UI. Back up the data volume first. Restrict the LAN port with firewall rules or configure HTTPS through a Dokploy Domain. See [Dokploy Guide](docs/DOKPLOY.md).
 
-For standalone installations only, use `compose.yaml` from a local repository checkout; copy `.env.example` to `.env`, set a strong bootstrap password, and run `docker compose up -d --build`. **Do not use these standalone commands for Dokploy-managed deployments.**
+For non-Dokploy users, `compose.yaml` remains an optional standalone deployment example.
 
 ## Documentation
 
-- [Dokploy deployment (primary)](docs/DOKPLOY.md)
-- [Standalone install, backup and restore](docs/INSTALL.md)
-- [Android application setup and limitations](clients/android/README.md)
-- [Windows/Linux desktop client](clients/desktop/README.md)
-- [Complete API and WebSocket protocol](docs/API.md)
-- [Architecture and delivery behavior](docs/ARCHITECTURE.md)
-- [Security, data protection and limitations](docs/SECURITY.md)
-- [Troubleshooting and diagnostics](docs/TROUBLESHOOTING.md)
+- [**Go desktop application — Windows and Linux**](clients/desktop-go/README.md)
+- [Platform build and packaging instructions](docs/PLATFORM-BUILDS.md)
+- [Native-client parity and limits](docs/CLIENT-PARITY.md)
+- [Android client](clients/android/README.md)
+- [Dokploy deployment, upgrades and volumes](docs/DOKPLOY.md)
+- [Standalone server installation and backups](docs/INSTALL.md)
+- [API and WebSocket protocol](docs/API.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Security](docs/SECURITY.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
 - [Development and testing](docs/DEVELOPMENT.md)
-- [Client parity](docs/CLIENT-PARITY.md)
-- [Platform builds](docs/PLATFORM-BUILDS.md)
 - [Release checklist](docs/RELEASE-CHECKLIST.md)
 - [Changelog](CHANGELOG.md)
+- [Legacy Python prototype (deprecated)](clients/desktop/README.md)
 
-## Project boundaries
+## Security and roadmap
 
-Beacon is deliberately a personal, text-first instant messenger. It does **not** share Monita's notification-channel or automation architecture. Group messaging, files, WebRTC audio/video, Windows tray support and opt-in Android foreground monitoring are now implemented in source, but have not been verified on devices. Background delivery after Android force-stop or loss of LAN is not guaranteed.
+Bearer tokens are user/device-specific, expire and can be revoked. Go clients **optionally** save them in Windows Credential Manager or a Linux Secret Service provider; when the secure vault is unavailable, login remains in memory only. The server stores messages in SQLite, **not end-to-end encrypted**. Plain HTTP is suitable only for a trusted LAN; HTTPS/WSS is recommended for untrusted network paths.
 
-License: no license has been selected or granted in this repository; the private repository owner retains all applicable rights.
+Real-time WebSocket push is currently implemented by the browser client; Go desktops poll at intervals for messaging and presence. Future areas: complete build/device verification, richer desktop notifications, guaranteed reconnect behavior, Android background delivery refinements, and eventual WebRTC audio/video. No unrelated Monita functionality will be added.
 
-## Paired Windows + Android release — v0.7.0
-
-Windows now has Windows-user-scoped DPAPI session restoration, optional tray operation, Windows toast integration, and a GitHub Actions workflow for a versioned `Beacon-Windows-0.7.0.exe`. Android now has an explicitly enabled `remoteMessaging` foreground service with an ongoing notification, Stop action, a persisted event cursor, and LAN message/presence polling. Android uses the same Docker account, sessions, buddies and messages as the desktop client. No cloud notification provider is required.
-
-The existence of the packaging workflows does **not** mean a verified EXE or APK is available. Check the individual Actions runs and artifacts. See [Windows build and tray documentation](clients/desktop/README.md) and [Android foreground-monitor documentation](clients/android/README.md).
-
-## v0.7.0 — Windows, Linux and Android together
-
-One cohesive three-client release, with corresponding server, packaging, tests and docs:
-
-- **Windows:** protected login via DPAPI, tray and native notices, own-profile editing, signed-in device manager, saved IM-history search and persisted notification preferences.
-- **Linux:** optional system keyring login (never plaintext), optional indicator tray, notify-send alerts, the same profile/devices/search UI as Windows, and Linux tar.gz distribution with desktop entry and per-user install/uninstall scripts.
-- **Android:** native profile/status editor, photo picker/upload, device-session management, conversation search, non-overlapping refreshes and notifications that open the sender's conversation.
-- **Server:** account-scoped message-history search that treats SQL wildcard characters literally.
-- **Dokploy:** remains the primary Git-backed Compose deployment, with one persistent server; no manual `/root/beacon` checkout.
-
-See [Client parity](docs/CLIENT-PARITY.md), [Platform builds](docs/PLATFORM-BUILDS.md) and the [release checklist](docs/RELEASE-CHECKLIST.md). **No installer/APK/EXE is considered validated until a successful build and device test.**
+No license has been granted for this private repository; the owner retains rights.

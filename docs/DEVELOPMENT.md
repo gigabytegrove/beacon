@@ -12,7 +12,8 @@ Documentation is a release requirement: whenever APIs or behavior change, update
 - `server/aim.py` — buddy/presence/profile/typing/sync endpoints
 - `server/social.py` — private groups, aliases and mute preferences
 - `server/static/index.html` — browser buddy list and pop-out conversations
-- `clients/desktop/` — native Tkinter Windows/Linux client
+- `clients/desktop-go/` — **primary Go/Fyne Windows and Linux native client**; stdlib Go API/tests
+- `clients/desktop/` — deprecated Python/Tkinter source, reference only; not packaged
 - `clients/android/` — Android Java source and Android Gradle project
 - `tests/` — Python API integration tests
 - `docs/` — installation, security, API, architecture and troubleshooting
@@ -60,3 +61,11 @@ Dokploy is the primary deployment target. Server/Docker environment changes must
 Windows, Linux and Android are now built and documented **in tandem**. A major release must include complete client, server, platform packaging, tests and updated documentation. CI workflows: `windows.yml`, `linux.yml`, `android.yml`, plus server `ci.yml`. New tests include `test_message_search.py`, `test_desktop_platform.py`, and `test_repository_contract.py`.
 
 Use [client parity](CLIENT-PARITY.md), [platform build instructions](PLATFORM-BUILDS.md), and [the release checklist](RELEASE-CHECKLIST.md). In particular, do not call APK/EXE/Linux binaries validated if GitHub did not allocate any build runner or if no artifact exists.
+
+## 0.8.0 desktop Go migration and quality gates
+
+Windows and Linux binaries are built from the same `clients/desktop-go` source tree, not Python/Tkinter. Go dependencies are pinned to Fyne 2.8.1 and go-keyring 0.2.8 in `go.mod`. The Windows and Linux workflows run `go mod tidy`, `go test -race ./internal/beacon` and native `go build` with the platform C/graphics development environment. Application users install **only the compiled release artifact**.
+
+The API package has no GUI dependency and is covered by Go `httptest` security/transport regressions. The Python CI workflow continues testing the **Docker server**, not a Python desktop release. No new documentation or instructions should direct users to `py -3 clients/desktop/beacon_desktop.py` for the supported desktop client.
+
+Developer build commands and limitations: [Platform Builds](PLATFORM-BUILDS.md). Runtime/feature gates: [Release Checklist](RELEASE-CHECKLIST.md). Do not claim a successful Go compilation or package until CI has allocated a runner, completed build steps and produced inspectable artifacts. Go module checksums should be committed once a dependency-resolving environment is available.

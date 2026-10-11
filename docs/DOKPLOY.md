@@ -59,3 +59,7 @@ See [official Dokploy Compose documentation](https://docs.dokploy.com/docs/core/
 ## v0.7.0 client/server compatibility
 
 All three native clients connect to this one Dokploy-hosted Beacon server. Windows, Linux and Android v0.7.0 expect the new authenticated `/api/messages/search` endpoint; redeploy the server from `main` through Dokploy before using client search. Native builds are produced outside Dokploy in the matching GitHub platform workflow, not in a second container. `compose.dokploy.yaml`, the `beacon-data` persistent volume and TCP port 8765 remain unchanged.
+
+## Beacon 0.8.0: Go desktop clients, unchanged Docker deployment
+
+Windows and Linux clients are now built as Go/Fyne executables. **Nothing about this requires Go or Python to be installed on desktop client devices.** The server remains the single Python/FastAPI Docker Compose service on Dokploy using `./compose.dokploy.yaml`. Redeploy GitHub `main` through Dokploy to receive the server's buddy field compatibility fix. No new service, container or host directory is needed, and the existing `beacon-data` volume must remain intact.
