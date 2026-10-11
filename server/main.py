@@ -119,7 +119,7 @@ async def lifespan(app):
             pass
 
 
-app = FastAPI(title="Beacon", version="0.6.0", lifespan=lifespan)
+app = FastAPI(title="Beacon", version="0.7.0", lifespan=lifespan)
 
 
 def auth_token(token):
@@ -309,6 +309,32 @@ async def revoke_session(session_id: int, request: Request):
     await disconnect_session(session_id)
     await notify_presence(actor["id"], old_presence)
     return {"ok": True}
+
+
+@app.get("/api/messages/search")
+def search_messages(request: Request, q: str, peer_id: int | None = None, limit: int = 50):
+    """Authenticated server-side text search across this user's conversations."""
+    actor = current(request)
+    query = q.strip()
+    if not 2 <= len(query) <= 100 or not 1 <= limit <= 100:
+        raise HTTPException(422, "Search requires 2-100 characters and limit 1-100")
+    if peer_id is not None:
+        with connection() as db:
+            if peer_id == actor["id"] or not db.execute("SELECT 1 FROM users WHERE id=?", (peer_id,)).fetchone():
+                raise HTTPException(404, "Conversation not found")
+    # Escape wildcards so input text is treated literally instead of a pattern.
+    pattern = "%" + query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    with connection() as db:
+        rows = db.execute("""
+          SELECT id,sender_id,recipient_id,body,created_at FROM messages
+          WHERE (sender_id=:user OR recipient_id=:user)
+          AND body LIKE :pattern ESCAPE '\\'
+          AND (:peer IS NULL OR
+              (sender_id=:user AND recipient_id=:peer) OR
+              (sender_id=:peer AND recipient_id=:user))
+          ORDER BY id DESC LIMIT :limit
+        """, {"user": actor["id"], "pattern": pattern, "peer": peer_id, "limit": limit}).fetchall()
+    return [dict(row) for row in rows]
 
 
 @app.get("/api/messages/{other_id}")

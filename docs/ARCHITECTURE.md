@@ -46,3 +46,9 @@ Guaranteed immediate messages while force-stopped or disconnected cannot be prom
 ## Dokploy server deployment
 
 Dokploy's Git-backed **Docker Compose** service uses `./compose.dokploy.yaml` (branch `main`) to build one server container, attaches to external `dokploy-network` for proxy routing, and stores SQLite in stable Docker named volume `beacon-data`. No static `/root/beacon` directory is used. Standalone `compose.yaml` remains for non-Dokploy environments.
+
+## v0.7.0 platform architecture
+
+`clients/desktop/platform_integration.py` is a shared Windows/Linux adapter for OS credential storage, notifications, optional tray controls and non-secret preferences. On Windows tokens can be protected with Windows DPAPI; on Linux an available desktop keyring is required for remembered login. Unavailable secure storage means **no** saved token, never a plaintext fallback.
+
+Android retains Android Keystore sessions and a user-opted-in `remoteMessaging` foreground service; the Activity and service coordinate visibility via a process-local flag instead of an obsolete persisted value. Message notifications may carry the sender's user ID to open the relevant chat. Conversation search is handled entirely by an authenticated server SQL query.

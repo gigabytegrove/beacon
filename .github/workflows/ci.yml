@@ -18,7 +18,11 @@ jobs:
         run: |
           python -c "from pathlib import Path; html=Path('server/static/index.html').read_text(); Path('/tmp/beacon-browser.js').write_text(html.split('<script>',1)[1].split('</script>',1)[0])"
           node --check /tmp/beacon-browser.js
-      - name: Integration tests
+      - name: Linux packaging script syntax
+        run: |
+          bash -n clients/desktop/linux/install.sh
+          bash -n clients/desktop/linux/uninstall.sh
+      - name: Integration, security, and documentation tests
         run: python -m pytest -q
       - name: Docker build
         run: docker build -t beacon-ci .

@@ -90,3 +90,7 @@ FastAPI returns standard HTTP error codes: 401 authentication, 403 permission, 4
 No new Docker server API endpoints are required for this update. Windows tray mode polls the existing buddy and message APIs. The Android opt-in foreground monitoring service uses `GET /api/buddies`, `GET /api/events?after=ID` and `POST /api/presence`, keeping a local cursor for at-least-once fetch and deduplication. Server 401 responses stop Android background monitoring. The HTTP interface is unchanged for desktop and web clients.
 
 When first enabling Android background monitoring, the service requests `GET /api/events/latest` to seed its cursor before any notifications. Future checks use `/api/events?after=ID`; this avoids notifying the user about their entire existing conversation history. Both mobile and desktop clients use the same Docker-hosted API.
+
+## v0.7.0: authenticated message search
+
+`GET /api/messages/search?q=search+phrase&peer_id=42&limit=50` returns most recent matching messages (descending by ID). The peer ID is optional; omit it to search every conversation involving the current user. Search is authenticated, accepts 2–100 characters, caps results at 100, and treats `%`, `_`, and backslashes as literal text. It never searches other users' conversations, and does not require a separate search engine. SQLite LIKE scans may be slower in very large databases.

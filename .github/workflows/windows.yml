@@ -27,13 +27,13 @@ jobs:
       - name: Build Windows executable
         run: |
           python -m PyInstaller --noconfirm --clean --onefile --windowed --name Beacon --collect-all pystray --collect-all winotify clients/desktop/beacon_desktop.py
-          Move-Item dist/Beacon.exe dist/Beacon-Windows-0.6.0.exe
+          Move-Item dist/Beacon.exe dist/Beacon-Windows-0.7.0.exe
         shell: pwsh
       - name: Windows executable hash
-        run: Get-FileHash dist/Beacon-Windows-0.6.0.exe -Algorithm SHA256
+        run: Get-FileHash dist/Beacon-Windows-0.7.0.exe -Algorithm SHA256
         shell: pwsh
       - uses: actions/upload-artifact@v4
         with:
-          name: beacon-windows-0.6.0
-          path: dist/Beacon-Windows-0.6.0.exe
+          name: beacon-windows-0.7.0
+          path: dist/Beacon-Windows-0.7.0.exe
           if-no-files-found: error

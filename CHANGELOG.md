@@ -1,5 +1,18 @@
 # Beacon changelog
 
+## 0.7.0 — Three-platform parity and client hardening
+
+- Windows: native profile/status editor, signed-in device manager, per-chat search and saved alert preferences; continued Windows DPAPI session encryption, native toasts and tray behavior.
+- Linux: new system keyring adapter for encrypted session persistence, native notifications and optional indicator tray with safe fallbacks, no plaintext token storage.
+- Linux: packaged PyInstaller tar.gz with icon, XDG desktop entry, per-user install/uninstall scripts and GitHub workflow.
+- Android: native profile/status editing, photo picker and image upload, device-session listing/revocation, conversation search and chat-opening message notifications.
+- Android: non-overlapping foreground polls and process-local Activity visibility to avoid stale state after crashes; opt-in foreground monitor retained.
+- Server: authenticated, account-scoped history search with literal LIKE wildcard handling; no external search service.
+- Three-platform CI and additional search, source, preference, and contract tests.
+- Root and platform READMEs, changelog, API, architecture, security and operational docs kept with the same release.
+- CI artifacts and platform behavior remain unverified until actual builds and target-device tests pass.
+
+
 ## 0.6.0 — Windows and Android in tandem, Dokploy deployment
 
 - Windows: optional per-user DPAPI-encrypted remembered login and launch-time session validation; hide-to-tray, Open/Quit tray actions and native toast alerts (optional runtime packages).
