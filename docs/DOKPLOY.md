@@ -63,3 +63,7 @@ All three native clients connect to this one Dokploy-hosted Beacon server. Windo
 ## Beacon 0.8.0: Go desktop clients, unchanged Docker deployment
 
 Windows and Linux clients are now built as Go/Fyne executables. **Nothing about this requires Go or Python to be installed on desktop client devices.** The server remains the single Python/FastAPI Docker Compose service on Dokploy using `./compose.dokploy.yaml`. Redeploy GitHub `main` through Dokploy to receive the server's buddy field compatibility fix. No new service, container or host directory is needed, and the existing `beacon-data` volume must remain intact.
+
+## Early client testing
+
+Before testing the desktop/mobile apps, use the independent [Beacon Probe](../tools/beacon-probe/README.md) to verify `/health` and optionally the authenticated API from a LAN workstation. The probe is a compiled Go diagnostic, not the GUI client. See [Build and Test](BUILD-AND-TEST.md) for handling blocked GitHub Actions and producing real client installers outside the Dokploy container.

@@ -53,3 +53,22 @@ def test_go_desktop_is_primary_and_not_python_packaged():
         assert "beacon_desktop.py" not in workflow
     readme = (ROOT / "README.md").read_text()
     assert "do **not** need Python" in readme
+
+
+def test_manual_builders_and_probe_are_separate_from_clients():
+    root = ROOT
+    for relative in (
+        "scripts/build-desktop-windows.ps1",
+        "scripts/build-desktop-linux.sh",
+        "scripts/build-android-windows.ps1",
+        "docs/BUILD-AND-TEST.md",
+        "tools/beacon-probe/main.go",
+        "tools/beacon-probe/README.md",
+    ):
+        assert (root / relative).is_file(), relative
+    probe = (root / "tools/beacon-probe/main.go").read_text()
+    assert "It is NOT the Beacon graphical instant messaging client." in probe
+    for wf in ("windows.yml", "linux.yml"):
+        source = (root / ".github/workflows" / wf).read_text()
+        assert "scripts/build-desktop-" in source
+        assert "PyInstaller" not in source

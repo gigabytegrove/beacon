@@ -4,6 +4,8 @@ on:
     paths:
       - 'clients/desktop-go/**'
       - '.github/workflows/windows.yml'
+      - 'scripts/build-desktop-windows.ps1'
+  workflow_dispatch:
   pull_request:
     paths:
       - 'clients/desktop-go/**'
@@ -28,20 +30,16 @@ jobs:
           $ErrorActionPreference = "Stop"
           $env:Path = "C:\msys64\mingw64\bin;$env:Path"
           $env:CGO_ENABLED = "1"
-          Set-Location clients/desktop-go
-          go mod tidy
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          go test -race ./internal/beacon
-          if ($LASTEXITCODE -ne 0) { exit 1 }
-          go build -trimpath -ldflags="-s -w -H=windowsgui" -o ../../Beacon-Windows-0.8.0.exe ./cmd/beacon
-          if ($LASTEXITCODE -ne 0) { exit 1 }
+          ./scripts/build-desktop-windows.ps1
       - name: Check release binary
         shell: pwsh
         run: |
-          if (!(Test-Path Beacon-Windows-0.8.0.exe)) { throw "Windows binary not produced" }
-          Get-FileHash Beacon-Windows-0.8.0.exe -Algorithm SHA256
+          if (!(Test-Path dist/Beacon-Windows-0.8.0.exe)) { throw "Windows binary not produced" }
+          Get-FileHash dist/Beacon-Windows-0.8.0.exe -Algorithm SHA256
       - uses: actions/upload-artifact@v4
         with:
           name: beacon-windows-go-0.8.0
-          path: Beacon-Windows-0.8.0.exe
+          path: |
+            dist/Beacon-Windows-0.8.0.exe
+            dist/Beacon-Windows-0.8.0.sha256
           if-no-files-found: error

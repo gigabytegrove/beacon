@@ -69,3 +69,9 @@ Windows and Linux binaries are built from the same `clients/desktop-go` source t
 The API package has no GUI dependency and is covered by Go `httptest` security/transport regressions. The Python CI workflow continues testing the **Docker server**, not a Python desktop release. No new documentation or instructions should direct users to `py -3 clients/desktop/beacon_desktop.py` for the supported desktop client.
 
 Developer build commands and limitations: [Platform Builds](PLATFORM-BUILDS.md). Runtime/feature gates: [Release Checklist](RELEASE-CHECKLIST.md). Do not claim a successful Go compilation or package until CI has allocated a runner, completed build steps and produced inspectable artifacts. Go module checksums should be committed once a dependency-resolving environment is available.
+
+## Manual build route and CI startup failures
+
+Client build workflows now delegate to `scripts/build-desktop-windows.ps1` and `scripts/build-desktop-linux.sh`, and include `workflow_dispatch`. Android has `scripts/build-android-windows.ps1` for local workstations. They create checksummed binaries only if the compiler/Gradle succeeds. Neither source files nor empty Actions jobs count as successful builds. See [Build and Test](BUILD-AND-TEST.md).
+
+The separate `tools/beacon-probe/main.go` uses only Go's standard library; it can be compiled without Fyne to test a Dokploy server. Never confuse it with the Windows/Linux GUI client.

@@ -1,5 +1,15 @@
 # Beacon changelog
 
+## 0.8.0 build-readiness follow-up (no GUI release declared)
+
+- Added one-command Windows Go/Fyne desktop builder with prerequisite validation, Go API tests and versioned executable checksum output.
+- Added Linux Go/Fyne builder with graphics-header checks, binary packaging, per-user installer and checksum output.
+- Added Windows Android Gradle APK builder with SDK/JDK/Gradle checks and versioned debug APK output.
+- Windows/Linux CI now call those same manual builders; all three platform workflows offer manual dispatch when runners become available.
+- Added Go standard-library Beacon Probe source and locally compiled Windows/Linux preflight tools for server reachability and authenticated API checks. These are **diagnostics, not GUI messenger clients**.
+- Documented runner failures, build-host prerequisites, local manual builds, binary verification and release acceptance; no unverified executable has been called tested.
+
+
 ## 0.8.0 — Go-native Windows/Linux clients; Python desktop retired from releases
 
 - Replaced the default desktop implementation with **one Go/Fyne source tree** for Windows and Linux. Installed users do not need Python/Tkinter/pip or a Go development toolchain.

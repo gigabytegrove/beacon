@@ -4,6 +4,8 @@ on:
     paths:
       - 'clients/android/**'
       - '.github/workflows/android.yml'
+      - 'scripts/build-android-windows.ps1'
+  workflow_dispatch:
   pull_request:
     paths:
       - 'clients/android/**'

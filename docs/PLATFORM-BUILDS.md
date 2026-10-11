@@ -45,3 +45,9 @@ Open `clients/android` in Android Studio (JDK 17, Gradle 8.9, Android SDK 35). A
 Go direct dependencies are pinned in `clients/desktop-go/go.mod`. The build pipeline runs `go mod tidy` to resolve and generate checksums before building. **A committed Go module and workflow do not establish that an EXE or Linux binary has actually been produced.** Verify workflow steps, artifact sizes/checksums and launch behavior on target machines. Do not call the release production-ready while GitHub runners are unavailable.
 
 Consult [Release Checklist](RELEASE-CHECKLIST.md).
+
+## Offline/runner-blocked build route
+
+See [Build and Test](BUILD-AND-TEST.md) for the exact commands when GitHub-hosted runners fail before execution. Windows and Linux have local scripts in `scripts/` to build the **same native Go/Fyne client**, with SHA256 files; the Android PowerShell script builds the native Java APK. These scripts require development tools only on the build workstation. All GUI binaries are still **unverified** until compiled and installed.
+
+The independent Go [Beacon Probe](../tools/beacon-probe/README.md) can be built with only the Go standard library and tests Dokploy server connectivity. It is **not** the messenger.
