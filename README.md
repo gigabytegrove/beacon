@@ -31,6 +31,7 @@ For non-Dokploy users, `compose.yaml` remains an optional standalone deployment 
 ## Documentation
 
 - [**Go desktop application — Windows and Linux**](clients/desktop-go/README.md)
+- [Build and test clients when GitHub runners are unavailable](docs/BUILD-AND-TEST.md)
 - [Platform build and packaging instructions](docs/PLATFORM-BUILDS.md)
 - [Native-client parity and limits](docs/CLIENT-PARITY.md)
 - [Android client](clients/android/README.md)
@@ -52,3 +53,9 @@ Bearer tokens are user/device-specific, expire and can be revoked. Go clients **
 Real-time WebSocket push is currently implemented by the browser client; Go desktops poll at intervals for messaging and presence. Future areas: complete build/device verification, richer desktop notifications, guaranteed reconnect behavior, Android background delivery refinements, and eventual WebRTC audio/video. No unrelated Monita functionality will be added.
 
 No license has been granted for this private repository; the owner retains rights.
+
+## Hands-on testing and manual client builds
+
+GitHub-hosted runners are still failing before they execute any steps. The project now includes explicit Windows/Android PowerShell and Linux Bash builders under `scripts/`, and the Windows/Linux CI workflows use those same builders. The compiled GUI binaries must be produced on build workstations with Go/Fyne build prerequisites installed, **not** on ordinary user computers.
+
+A separate dependency-free Go **Beacon Probe** is available for preflight testing of server health and authenticated APIs; it is **not** a graphical messenger. See [Build and Test](docs/BUILD-AND-TEST.md) and [Probe](tools/beacon-probe/README.md). Actual EXE/APK GUI downloads should not be claimed until built and tested.

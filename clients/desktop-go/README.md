@@ -50,3 +50,7 @@ Password/session handling: pressing Logout revokes the current session. Quitting
 Android remains native Java with a separate client build. The shared server is deployed using [Dokploy Compose](../../docs/DOKPLOY.md).
 
 **Verification status:** Not yet runtime-validated as a packaged Windows/Linux release. Consult [Release Checklist](../../docs/RELEASE-CHECKLIST.md).
+
+## Build locally if GitHub Actions doesn't allocate runners
+
+From a checked-out Beacon repository on a **Windows build workstation** with Go and MinGW-w64 GCC, run `powershell -ExecutionPolicy Bypass -File .\scripts\build-desktop-windows.ps1`. From a **Linux build workstation** with Go/GCC/OpenGL development headers, run `bash scripts/build-desktop-linux.sh`. Outputs and checksums land in `dist/`. The runtime users still need **none** of those developer tools. See [Build and Test](../../docs/BUILD-AND-TEST.md).

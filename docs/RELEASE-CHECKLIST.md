@@ -60,3 +60,11 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] Numeric and JSON boolean `muted`/`is_admin` server responses decode correctly.
 - [ ] Buddy groups/nicknames/mute/unread fields are returned after a real Dokploy server deployment.
 - [ ] Release artifacts have platform-specific SHA256 hashes and have been manually tested.
+
+## Alternate build and download verification
+
+- [ ] GitHub-hosted Actions runner allocation restored **or** native client compiled on a supported build workstation using `scripts/build-desktop-windows.ps1`, `scripts/build-desktop-linux.sh` and `scripts/build-android-windows.ps1`.
+- [ ] Windows Go/Fyne EXE actually exists; record its SHA256 and test it on a clean Windows computer.
+- [ ] Linux Go/Fyne archive actually exists; verify tar contents and install/run on an actual Linux desktop.
+- [ ] Android APK actually exists; install on a test phone and verify background-monitor consent.
+- [ ] Optional Beacon Probe succeeds against the live Dokploy server; do not count it as a GUI test.

@@ -5,6 +5,8 @@ on:
       - 'clients/desktop-go/**'
       - 'clients/desktop/linux/**'
       - '.github/workflows/linux.yml'
+      - 'scripts/build-desktop-linux.sh'
+  workflow_dispatch:
   pull_request:
     paths:
       - 'clients/desktop-go/**'
@@ -25,23 +27,16 @@ jobs:
       - name: Test Go HTTP client and build binary
         run: |
           set -Eeuo pipefail
-          cd clients/desktop-go
-          go mod tidy
-          go test -race ./internal/beacon
-          CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o ../../beacon ./cmd/beacon
-      - name: Assemble self-contained distribution archive
+          bash scripts/build-desktop-linux.sh
+      - name: Validate distribution and checksum
         run: |
-          set -Eeuo pipefail
-          bash -n clients/desktop/linux/install.sh
-          bash -n clients/desktop/linux/uninstall.sh
-          mkdir -p dist/Beacon-Linux-0.8.0
-          cp beacon dist/Beacon-Linux-0.8.0/beacon
-          cp clients/desktop/linux/beacon.desktop clients/desktop/linux/beacon.svg clients/desktop/linux/install.sh clients/desktop/linux/uninstall.sh dist/Beacon-Linux-0.8.0/
-          chmod +x dist/Beacon-Linux-0.8.0/beacon dist/Beacon-Linux-0.8.0/install.sh dist/Beacon-Linux-0.8.0/uninstall.sh
-          tar -C dist -czf dist/Beacon-Linux-0.8.0.tar.gz Beacon-Linux-0.8.0
-          sha256sum dist/Beacon-Linux-0.8.0.tar.gz
+          test -s dist/Beacon-Linux-0.8.0.tar.gz
+          cd dist
+          sha256sum -c Beacon-Linux-0.8.0.sha256
       - uses: actions/upload-artifact@v4
         with:
           name: beacon-linux-go-0.8.0
-          path: dist/Beacon-Linux-0.8.0.tar.gz
+          path: |
+            dist/Beacon-Linux-0.8.0.tar.gz
+            dist/Beacon-Linux-0.8.0.sha256
           if-no-files-found: error

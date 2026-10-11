@@ -73,3 +73,7 @@ After a **successful** Android Gradle build, the expected APK filename is `Beaco
 ## Desktop clients in v0.8.0
 
 Windows and Linux are now **Go/Fyne native compiled applications**, not Python/Tkinter. This does not change Android's own native Java APK. All three platforms use the same Dokploy-hosted Beacon API, including multi-device sessions and buddy synchronization. The server has been updated to include nickname/group/mute fields consistently for both Android and Go desktops.
+
+## Build APK locally if GitHub Actions is blocked
+
+On a Windows build workstation with Android Studio/SDK 35, JDK 17+ and Gradle 8.9 installed, use `powershell -ExecutionPolicy Bypass -File .\scripts\build-android-windows.ps1` from the repository root. If Gradle CLI is not installed, open `clients/android` in Android Studio and select Build APK. The script copies a **successfully compiled** APK to `dist/` and writes SHA256. No APK is guaranteed merely because the workflow exists. See [Build and Test](../../docs/BUILD-AND-TEST.md).
