@@ -79,3 +79,16 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] Windows/Linux buddy list retains scroll position between unchanged refreshes.
 - [ ] An expired/revoked session returns to the login UI and clears the remembered token.
 - [ ] Server tests, native GUI builds and real-device validation actually run before publication.
+
+
+## Runner eligibility and non-bypass requirements
+
+- [ ] A dedicated, isolated Windows x64 and Linux x64 builder are registered **Online** in GitHub's Actions Runners list, with exact labels `beacon-windows` and `beacon-linux`, or GitHub-hosted execution has been restored.
+- [ ] All four workflows executed nonzero build steps on matching runners; never accept a green status produced by skipping a required job.
+- [ ] Repository variable `BEACON_USE_SELF_HOSTED_RUNNERS` only set after runners are registered and verified.
+- [ ] Real Windows EXE, Linux tar.gz and Android APK are uploaded with expected names; download and inspect actual checksums and install on real devices.
+- [ ] Python/Docker CI and all client tests pass, and no previous startup failures have been misrepresented as source failures.
+- [ ] Build host has no production Dokploy credentials, and test runners are not running on the production Docker host.
+
+- [ ] Self-hosted worker selection is blocked for `pull_request`; only trusted `push` or owner-triggered manual builds may execute on private builders.
+- [ ] Download release artifacts within the configured 7-day retention window.

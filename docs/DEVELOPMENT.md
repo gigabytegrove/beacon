@@ -83,3 +83,9 @@ Tests in `tests/test_connection_and_presence.py` validate that SQLite handles cl
 Before calling Beacon test-ready, run `python -m pytest -q` against the real server environment, build the Docker image, verify its Dokploy persistent volume survives redeploy, and compile/install the native Windows/Linux and Android clients. The source review is **not** equivalent to a successful CI or GUI runtime test.
 
 Blocked GitHub Actions: follow [runner recovery](GITHUB-ACTIONS-RUNNER-RECOVERY.md) for account checks or the zero-cost local build alternative. Do not change application versions simply to retrigger an unassigned job.
+
+## Four CI pipelines / runner selection
+
+CI workflow files are `.github/workflows/{ci,windows,linux,android}.yml`. All four enforce tests/build/artifact checks regardless of location. The default `runs-on` is hosted; when the GitHub Actions repository variable `BEACON_USE_SELF_HOSTED_RUNNERS=true` is set or the manual-dispatch `runner=self-hosted` input is chosen, labels `beacon-windows` and `beacon-linux` select dedicated build workers. Do not use the production Dokploy host as a general-purpose Actions runner. See [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md).
+
+Self-hosted runner selection is **not permitted for pull_request events** to avoid executing untrusted PR code on private machines. Uploadable EXE/tar.gz/APK artifacts have 7-day retention; store release checksums separately when they are fully verified.

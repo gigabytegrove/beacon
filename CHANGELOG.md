@@ -1,5 +1,14 @@
 # Beacon changelog
 
+## Build runner recovery — zero-step Actions failures
+
+- Added manual selection of trusted self-hosted build runners to all four Windows, Linux, Android, and server/Docker CI workflows, with exact per-OS runner labels.
+- Added repository variable `BEACON_USE_SELF_HOSTED_RUNNERS=true` as an opt-in for full automatic CI on self-hosted build machines; GitHub-hosted remains the default until configured.
+- Preserved every existing test, compiler invocation, checksum, Docker build and required downloadable artifact. Linux self-hosted machines must have graphics headers preinstalled rather than silently invoking sudo to modify the workstation.
+- Added comprehensive build-host registration, security/isolation, troubleshooting, and actual binary acceptance guidance.
+- No build success is claimed while the account has no available runner; the GitHub account owner must provision or unblock a real runner.
+
+
 ## v0.8.0 stabilization — server connection lifecycle, batched presence and desktop UX
 
 - Close every SQLite connection deterministically and commit/rollback within its context; avoid leaked descriptors under frequent polling.

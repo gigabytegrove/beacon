@@ -6,13 +6,24 @@ on:
       - '.github/workflows/windows.yml'
       - 'scripts/build-desktop-windows.ps1'
   workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner location (all test/build steps remain mandatory)"
+        required: true
+        type: choice
+        default: github-hosted
+        options:
+          - github-hosted
+          - self-hosted
   pull_request:
     paths:
       - 'clients/desktop-go/**'
       - '.github/workflows/windows.yml'
 jobs:
   windows:
-    runs-on: windows-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' && (vars.BEACON_USE_SELF_HOSTED_RUNNERS == 'true' || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted'))) && '["self-hosted","Windows","X64","beacon-windows"]' || '"windows-latest"') }}
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -43,3 +54,4 @@ jobs:
             dist/Beacon-Windows-0.8.0.exe
             dist/Beacon-Windows-0.8.0.sha256
           if-no-files-found: error
+          retention-days: 7

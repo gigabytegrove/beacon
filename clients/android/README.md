@@ -77,3 +77,8 @@ Windows and Linux are now **Go/Fyne native compiled applications**, not Python/T
 ## Build APK locally if GitHub Actions is blocked
 
 On a Windows build workstation with Android Studio/SDK 35, JDK 17+ and Gradle 8.9 installed, use `powershell -ExecutionPolicy Bypass -File .\scripts\build-android-windows.ps1` from the repository root. If Gradle CLI is not installed, open `clients/android` in Android Studio and select Build APK. The script copies a **successfully compiled** APK to `dist/` and writes SHA256. No APK is guaranteed merely because the workflow exists. See [Build and Test](../../docs/BUILD-AND-TEST.md).
+
+
+## Android build runner availability
+
+The Android workflow can now run on a dedicated Linux x64 self-hosted Actions worker with label `beacon-linux`, selected manually or via repository variable. It still performs the Java/Gradle/SDK 35 build and uploads the APK only when compilation succeeds. No APK has been validated solely because a self-hosted runner option exists. See [runner setup](../../docs/SELF-HOSTED-BUILD-RUNNERS.md).

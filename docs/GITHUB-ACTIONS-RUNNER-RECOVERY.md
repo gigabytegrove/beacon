@@ -29,3 +29,8 @@ Beacon can be built on a **local Windows development computer** with Go/MinGW an
 - Backend: Docker image built and FastAPI tests run with a passing result, followed by a persistent-volume-safe Dokploy deployment.
 
 The separate Go Beacon Probe binary only validates server connectivity/API; it **does not** validate any graphical application.
+
+
+## Executable alternative: trusted self-hosted Actions runners
+
+The workflows now support self-hosted Linux and Windows workers with **no skipped build steps**. Follow [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md) for the exact GitHub registration commands and required labels. Once both workers show Online, choose the self-hosted runner location during a manual run or set GitHub Actions repository variable `BEACON_USE_SELF_HOSTED_RUNNERS=true` for all push jobs. The ongoing billing/entitlement status of GitHub-hosted runners is a separate problem; changing the runner target does not falsely mark that issue fixed.

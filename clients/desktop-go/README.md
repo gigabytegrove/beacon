@@ -58,3 +58,8 @@ From a checked-out Beacon repository on a **Windows build workstation** with Go 
 ## v0.8.0 stabilization
 
 The buddy-list renderer skips expensive UI rebuilds when the roster hasn't changed, keeping the current scroll position. When an account is revoked or a device session expires, the Go desktop clears remembered credentials and returns to the sign-in screen. Both behaviors require platform GUI verification, separate from the Go API tests.
+
+
+## Build on a trusted self-hosted CI runner
+
+GitHub's Windows/Linux workflows can now target registered Windows/Linux self-hosted runners via manual `runner=self-hosted` selection or the `BEACON_USE_SELF_HOSTED_RUNNERS=true` repository variable. This is a **real compile-and-test pipeline**, not a simulated build. End-user PCs still require only the compiled Go application; the build workers require Go, GCC/MinGW and graphics development headers. See [runner setup](../../docs/SELF-HOSTED-BUILD-RUNNERS.md).

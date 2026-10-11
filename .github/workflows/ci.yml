@@ -1,10 +1,22 @@
 name: Beacon CI
 on:
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: "Runner location (all test/build steps remain mandatory)"
+        required: true
+        type: choice
+        default: github-hosted
+        options:
+          - github-hosted
+          - self-hosted
   push:
   pull_request:
 jobs:
   server-and-client:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON((github.event_name != 'pull_request' && (vars.BEACON_USE_SELF_HOSTED_RUNNERS == 'true' || (github.event_name == 'workflow_dispatch' && inputs.runner == 'self-hosted'))) && '["self-hosted","Linux","X64","beacon-linux"]' || '"ubuntu-latest"') }}
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -24,5 +36,7 @@ jobs:
           bash -n clients/desktop/linux/uninstall.sh
       - name: Integration, security, and documentation tests
         run: python -m pytest -q
-      - name: Docker build
-        run: docker build -t beacon-ci .
+      - name: Docker build (required)
+        run: |
+          docker info
+          docker build -t beacon-ci .

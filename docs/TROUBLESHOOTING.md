@@ -69,3 +69,8 @@ On Windows/Linux, use the Profile and Devices buttons on the buddy list or Searc
 ## Expired device sessions and heavy roster polling
 
 When Beacon's server returns 401 for a revoked/expired token, the Go desktop now clears its secure saved login and returns to the sign-in screen. This is different from a temporary LAN interruption, which keeps the current session and displays a connectivity warning. For large buddy lists, server presence is now batched; if you see server latency, check Dokploy resource usage, `/health`, and the mounted SQLite volume rather than repeatedly restarting the container.
+
+
+## Actions jobs fail before the first step
+
+If all workflows show no runner and `steps=0`, no app tests were run. Check the owner account's Actions eligibility and billing status separately. For a genuine test/build path independent of hosted runner provisioning, register isolated self-hosted Windows/Linux machines as described in [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md). Ensure the exact labels are present and the workers are Online; otherwise jobs queue rather than compiling.
