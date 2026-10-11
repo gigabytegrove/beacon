@@ -54,3 +54,7 @@ Android remains native Java with a separate client build. The shared server is d
 ## Build locally if GitHub Actions doesn't allocate runners
 
 From a checked-out Beacon repository on a **Windows build workstation** with Go and MinGW-w64 GCC, run `powershell -ExecutionPolicy Bypass -File .\scripts\build-desktop-windows.ps1`. From a **Linux build workstation** with Go/GCC/OpenGL development headers, run `bash scripts/build-desktop-linux.sh`. Outputs and checksums land in `dist/`. The runtime users still need **none** of those developer tools. See [Build and Test](../../docs/BUILD-AND-TEST.md).
+
+## v0.8.0 stabilization
+
+The buddy-list renderer skips expensive UI rebuilds when the roster hasn't changed, keeping the current scroll position. When an account is revoked or a device session expires, the Go desktop clears remembered credentials and returns to the sign-in screen. Both behaviors require platform GUI verification, separate from the Go API tests.

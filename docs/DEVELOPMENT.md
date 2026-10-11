@@ -75,3 +75,11 @@ Developer build commands and limitations: [Platform Builds](PLATFORM-BUILDS.md).
 Client build workflows now delegate to `scripts/build-desktop-windows.ps1` and `scripts/build-desktop-linux.sh`, and include `workflow_dispatch`. Android has `scripts/build-android-windows.ps1` for local workstations. They create checksummed binaries only if the compiler/Gradle succeeds. Neither source files nor empty Actions jobs count as successful builds. See [Build and Test](BUILD-AND-TEST.md).
 
 The separate `tools/beacon-probe/main.go` uses only Go's standard library; it can be compiled without Fyne to test a Dokploy server. Never confuse it with the Windows/Linux GUI client.
+
+## Database/session/roster regression gate
+
+Tests in `tests/test_connection_and_presence.py` validate that SQLite handles close after context exit, failed transactions roll back, buddy/directory presence aggregates correctly across independent devices, no unauthorized roster access succeeds, and multiple contacts are resolved in a single batched SQL presence query. These tests complement Go transport tests and the existing FastAPI integration suite.
+
+Before calling Beacon test-ready, run `python -m pytest -q` against the real server environment, build the Docker image, verify its Dokploy persistent volume survives redeploy, and compile/install the native Windows/Linux and Android clients. The source review is **not** equivalent to a successful CI or GUI runtime test.
+
+Blocked GitHub Actions: follow [runner recovery](GITHUB-ACTIONS-RUNNER-RECOVERY.md) for account checks or the zero-cost local build alternative. Do not change application versions simply to retrigger an unassigned job.

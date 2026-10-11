@@ -6,6 +6,7 @@ import os
 import re
 import secrets
 import sqlite3
+from contextlib import contextmanager
 import threading
 import time
 from collections import defaultdict, deque
@@ -25,12 +26,22 @@ WS_SESSIONS: dict[WebSocket, int] = {}
 USERNAME = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
 
 
+@contextmanager
 def connection():
+    """One SQLite connection per unit of work, committed/rolled back and closed."""
     db = sqlite3.connect(DB, timeout=10)
-    db.row_factory = sqlite3.Row
-    db.execute("PRAGMA foreign_keys=ON")
-    db.execute("PRAGMA busy_timeout=10000")
-    return db
+    try:
+        db.row_factory = sqlite3.Row
+        db.execute("PRAGMA foreign_keys=ON")
+        db.execute("PRAGMA busy_timeout=10000")
+        try:
+            yield db
+            db.commit()
+        except BaseException:
+            db.rollback()
+            raise
+    finally:
+        db.close()
 
 
 def password_hash(password: str, salt: bytes | None = None):
@@ -90,6 +101,10 @@ def init_db():
         ):
             if column not in {r["name"] for r in db.execute("PRAGMA table_info(" + table + ")")}:
                 db.execute("ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition)
+        db.execute(
+            "CREATE INDEX IF NOT EXISTS idx_sessions_presence "
+            "ON sessions(user_id,expires_at,last_seen,presence)"
+        )
         from .social import migrate
         migrate(db)
         if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:

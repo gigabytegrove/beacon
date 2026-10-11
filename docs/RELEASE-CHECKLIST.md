@@ -68,3 +68,14 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] Linux Go/Fyne archive actually exists; verify tar contents and install/run on an actual Linux desktop.
 - [ ] Android APK actually exists; install on a test phone and verify background-monitor consent.
 - [ ] Optional Beacon Probe succeeds against the live Dokploy server; do not count it as a GUI test.
+
+## Stabilization acceptance
+
+- [ ] Existing Dokploy volume migrates with the additive `idx_sessions_presence` index intact.
+- [ ] Repeated polling by several devices doesn't accumulate open SQLite descriptors.
+- [ ] A forced exception in a SQLite context rolls back changes and closes its connection.
+- [ ] 400 or fewer directory contacts require just one presence SELECT rather than N.
+- [ ] Available, busy, away and offline are accurately aggregated when one user has multiple devices.
+- [ ] Windows/Linux buddy list retains scroll position between unchanged refreshes.
+- [ ] An expired/revoked session returns to the login UI and clears the remembered token.
+- [ ] Server tests, native GUI builds and real-device validation actually run before publication.

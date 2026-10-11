@@ -60,3 +60,9 @@ The Go desktop client uses `clients/desktop-go/go.mod` with pinned Fyne 2.8.1 an
 Windows/Linux executables are **compiled by CI** (Go plus C compiler and Fyne graphics headers) and require no Python, pip or Tkinter to run. Linux runtime OpenGL/window-system libraries may depend on distribution. The application uses authenticated HTTP polling at approximately 3–3.5 seconds; future optional WebSocket push can reduce traffic but is not part of this release. Android remains native Java; all clients use one Dokploy Docker server.
 
 The legacy Python/Tkinter GUI is not part of release packaging; it remains in the repository temporarily for reference only.
+
+## Polling and SQLite lifecycle stabilization
+
+Each backend request enters a managed SQLite context that commits completed writes, rolls back exceptions and closes its connection, rather than relying on Python's reference counting and delayed garbage collection. Presence lookups for directory/buddy results now batch user IDs into groups of 400; each group shares a live-connection query for all active device sessions, including aggregate status precedence (available, busy, away, offline). An additive session index supports these queries on existing Dokploy volumes.
+
+The Fyne buddy-list view compares new roster/groups with its prior state and leaves the existing widget hierarchy untouched when data is identical, maintaining scroll position. When the API returns HTTP 401 during polling, the client invalidates remembered credentials and returns to login, rather than displaying a persistent network error.

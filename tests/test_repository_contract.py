@@ -10,7 +10,8 @@ def test_documentation_and_platform_sources_exist():
         "README.md", "CHANGELOG.md", "docs/INSTALL.md", "docs/DOKPLOY.md",
         "docs/API.md", "docs/ARCHITECTURE.md", "docs/SECURITY.md",
         "docs/TROUBLESHOOTING.md", "docs/DEVELOPMENT.md",
-        "docs/RELEASE-CHECKLIST.md", "clients/desktop/README.md",
+        "docs/RELEASE-CHECKLIST.md",
+        "docs/GITHUB-ACTIONS-RUNNER-RECOVERY.md", "clients/desktop/README.md",
         "clients/android/README.md", "clients/desktop/linux/beacon.desktop",
         "clients/desktop/linux/install.sh", "clients/desktop/linux/uninstall.sh",
         "clients/desktop/platform_integration.py", "clients/desktop/win_integration.py",
@@ -72,3 +73,16 @@ def test_manual_builders_and_probe_are_separate_from_clients():
         source = (root / ".github/workflows" / wf).read_text()
         assert "scripts/build-desktop-" in source
         assert "PyInstaller" not in source
+
+
+def test_connection_lifecycle_and_batched_presence_are_wired():
+    server = (ROOT / "server/main.py").read_text()
+    aim = (ROOT / "server/aim.py").read_text()
+    desktop = (ROOT / "clients/desktop-go/cmd/beacon/main.go").read_text()
+    assert "@contextmanager\ndef connection():" in server
+    assert "db.rollback()" in server and "db.close()" in server
+    assert "idx_sessions_presence" in server
+    assert "def attach_presence(db, rows):" in aim
+    assert "range(0, len(user_ids), 400)" in aim
+    assert "reflect.DeepEqual" in desktop
+    assert "errors.Is(err,beacon.ErrUnauthorized)" in desktop
