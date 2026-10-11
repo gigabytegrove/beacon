@@ -24,8 +24,18 @@ def test_remote_messaging_service_wiring():
 
 def test_version_and_android_token_security():
     script = (BASE / "app/build.gradle").read_text()
-    assert "versionCode 6" in script
-    assert "0.6.0" in script
+    assert "versionCode 7" in script
+    assert "0.7.0" in script
     session = (JAVA / "SecureSession.java").read_text()
     assert "AndroidKeyStore" in session
     assert "AES/GCM/NoPadding" in session
+
+def test_native_android_account_and_search_interfaces():
+    activity = (JAVA / "MainActivity.java").read_text()
+    for fragment in ("editProfile()", "manageDevices()", "searchMessages(int peer)",
+                     "chooseAvatar()", "onActivityResult(", "AtomicBoolean",
+                     "openIncomingConversation(", "public static volatile boolean isUiVisible"):
+        assert fragment in activity
+    service = (JAVA / "BeaconMonitorService.java").read_text()
+    assert "MainActivity.isUiVisible" in service
+    assert "beacon_peer_id" in service

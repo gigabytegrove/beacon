@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Beacon Messenger
+Comment=Private LAN instant messaging
+Exec=beacon
+Icon=beacon
+Terminal=false
+Categories=Network;Chat;InstantMessaging;
+StartupNotify=true

@@ -55,3 +55,7 @@ A restored database must be placed into the **same** persistent volume. Avoid de
 Choose **Compose / Docker Compose**, because the server image is built from Git with `build.context: .`. Dokploy's Docker Stack variant does not support the same build method.
 
 See [official Dokploy Compose documentation](https://docs.dokploy.com/docs/core/docker-compose) and [Dokploy Compose example](https://docs.dokploy.com/docs/core/docker-compose/example).
+
+## v0.7.0 client/server compatibility
+
+All three native clients connect to this one Dokploy-hosted Beacon server. Windows, Linux and Android v0.7.0 expect the new authenticated `/api/messages/search` endpoint; redeploy the server from `main` through Dokploy before using client search. Native builds are produced outside Dokploy in the matching GitHub platform workflow, not in a second container. `compose.dokploy.yaml`, the `beacon-data` persistent volume and TCP port 8765 remain unchanged.

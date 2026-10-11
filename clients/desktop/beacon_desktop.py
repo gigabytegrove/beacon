@@ -11,12 +11,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
-from win_integration import clear_session, load_session, save_session, system_notice, tray_icon, is_windows
+from platform_integration import (
+    clear_session, load_session, save_session, notify, create_tray, is_windows,
+    is_linux, load_preferences, save_preferences,
+)
 
 try:
-    from PIL import Image, ImageTk
+    from PIL import Image, ImageTk, ImageOps
 except ImportError:
     Image = ImageTk = None
 
@@ -58,7 +61,7 @@ class Chat:
         self.seen = set()
         self.last_typed = 0
         self.window.protocol("WM_DELETE_WINDOW", self.close)
-        self.title = ttk.Label(self.window, text=buddy["display_name"],
+        self.title = ttk.Label(self.window, text=buddy.get("nickname") or buddy["display_name"],
                                font=("Segoe UI", 15, "bold"))
         self.title.pack(anchor="w", padx=14, pady=9)
         self.history = tk.Text(self.window, state="disabled", wrap="word", padx=14, pady=12)
@@ -71,6 +74,7 @@ class Chat:
         self.entry.pack(side="left", expand=True, fill="x")
         self.entry.bind("<Return>", lambda _: self.send())
         self.entry.bind("<KeyRelease>", self.on_type)
+        ttk.Button(bar, text="Search history", command=self.search_history).pack(side="left", padx=2)
         ttk.Button(bar, text="Send", command=self.send).pack(side="left", padx=5)
 
     def close(self):
@@ -100,6 +104,29 @@ class Chat:
         self.app.background(
             lambda: self.app.api.call("/messages", "POST",
                                       {"recipient_id": self.buddy_id, "body": body}), complete)
+
+    def search_history(self):
+        query = simpledialog.askstring("Search IM history", "Search for:", parent=self.window)
+        if not query or len(query.strip()) < 2:
+            return
+        def done(messages, error):
+            if error:
+                messagebox.showerror("Beacon", error, parent=self.window)
+                return
+            view = tk.Toplevel(self.window)
+            view.title("Beacon · Search: " + query[:40])
+            view.geometry("540x450")
+            text = tk.Text(view, wrap="word")
+            text.pack(fill="both", expand=True)
+            for message in reversed(messages):
+                name = "You" if message["sender_id"] == self.app.me["id"] else self.title.cget("text")
+                stamp = datetime.fromtimestamp(message["created_at"]).strftime("%Y-%m-%d %H:%M")
+                text.insert("end", name + " · " + stamp + "\n" + message["body"] + "\n\n")
+            if not messages:
+                text.insert("end", "No matches found.")
+            text.configure(state="disabled")
+        path = "/messages/search?q=" + urllib.parse.quote(query.strip()) + "&peer_id=" + str(self.buddy_id)
+        self.app.background(lambda: self.app.api.call(path), done)
 
     def receive(self, messages, typing):
         self.history.configure(state="normal")
@@ -132,15 +159,17 @@ class Beacon(tk.Tk):
         self.status = "available"
         self.polling = False
         self.loaded_once = False
-        self.sound_alerts = True
-        self.auto_open_im = True
+        options = load_preferences()
+        self.sound_alerts = options.get("sound_alerts", True)
+        self.auto_open_im = options.get("auto_open_im", True)
+        self.refresh_timer = None
         self.groups = []
         self.avatar_cache = {}
         self.tray = None
         self.protocol("WM_DELETE_WINDOW", self.close_window)
         self.login_view()
         self.after(100, self.drain)
-        self.restore_windows_session()
+        self.restore_saved_session()
 
     def background(self, work, completed):
         generation = self.generation
@@ -171,6 +200,10 @@ class Beacon(tk.Tk):
         self.polling = False
         self.old_presence = None
         self.loaded_once = False
+        if self.refresh_timer is not None:
+            try: self.after_cancel(self.refresh_timer)
+            except tk.TclError: pass
+            self.refresh_timer = None
         self.clear()
         root = ttk.Frame(self, padding=25)
         root.pack(expand=True, fill="x")
@@ -190,9 +223,9 @@ class Beacon(tk.Tk):
         self.login_button.pack(fill="x", pady=8)
         self.error_label = ttk.Label(root, text="")
         self.error_label.pack()
-        self.remember_device = tk.BooleanVar(value=is_windows())
-        if is_windows():
-            ttk.Checkbutton(root, text="Keep me signed in on this Windows account",
+        self.remember_device = tk.BooleanVar(value=is_windows() or is_linux())
+        if is_windows() or is_linux():
+            ttk.Checkbutton(root, text="Keep me signed in using the OS credential store",
                             variable=self.remember_device).pack(anchor="w", pady=6)
 
     def login(self):
@@ -215,24 +248,22 @@ class Beacon(tk.Tk):
                 self.error_label.configure(text=error)
             else:
                 self.me = result
-                if is_windows() and self.remember_device.get():
+                if self.remember_device.get():
                     if not save_session(self.api.base, self.api.token):
-                        messagebox.showwarning("Beacon", "Windows could not securely save this device session.")
+                        messagebox.showwarning("Beacon", "Secure credential storage is unavailable. This login will not be remembered.", parent=self)
                 else:
                     clear_session()
                 self.roster_view()
                 self.ensure_tray()
         self.background(work, complete)
 
-    def restore_windows_session(self):
-        if not is_windows():
-            return
+    def restore_saved_session(self):
         prior = load_session()
         if not prior:
             return
         self.api.base = prior["server"]
         self.api.token = prior["token"]
-        self.error_label.configure(text="Restoring protected Windows session…")
+        self.error_label.configure(text="Restoring secured device session…")
         def finished(result, error):
             if error:
                 self.api.token = None
@@ -245,11 +276,11 @@ class Beacon(tk.Tk):
         self.background(lambda: self.api.call("/me"), finished)
 
     def ensure_tray(self):
-        if not is_windows() or self.tray is not None:
+        if not (is_windows() or is_linux()) or self.tray is not None:
             return
         def queue_gui(callback):
             self.jobs.put((self.generation, lambda *_: callback(), None, None))
-        self.tray = tray_icon(
+        self.tray = create_tray(
             lambda: queue_gui(self.show_window),
             lambda: queue_gui(self.shutdown)
         )
@@ -295,22 +326,38 @@ class Beacon(tk.Tk):
         footer = ttk.Frame(self, padding=10)
         footer.pack(fill="x")
         ttk.Button(footer, text="IM", command=self.open_selected).pack(side="left")
+        ttk.Button(footer, text="Profile", command=self.edit_profile).pack(side="left", padx=3)
+        ttk.Button(footer, text="Devices", command=self.manage_devices).pack(side="left", padx=3)
         ttk.Button(footer, text="Sign out", command=self.logout).pack(side="right")
         self.connection = ttk.Label(self, text="Connecting…", padding=10)
         self.connection.pack(anchor="w")
         self.refresh()
+        
+    def schedule_refresh(self):
+        if self.refresh_timer is not None:
+            try:
+                self.after_cancel(self.refresh_timer)
+            except (tk.TclError, ValueError):
+                pass
+        current_generation = self.generation
+        self.refresh_timer = self.after(3000, lambda: self.refresh() if current_generation == self.generation else None)
 
     def status_change(self, _event):
         self.status = self.status_field.get()
         self.background(lambda: self.api.call("/presence", "POST", {"status": self.status}),
                         lambda *_: None)
 
+    def save_options(self):
+        save_preferences({"sound_alerts": self.sound_alerts, "auto_open_im": self.auto_open_im})
+
     def toggle_alerts(self):
         self.sound_alerts = not self.sound_alerts
+        self.save_options()
         self.toast("Notification sounds " + ("enabled" if self.sound_alerts else "disabled"))
 
     def toggle_popups(self):
         self.auto_open_im = not self.auto_open_im
+        self.save_options()
         self.toast("Incoming IM pop-ups " + ("enabled" if self.auto_open_im else "disabled"))
 
     def group_action(self, path, method="POST", payload=None):
@@ -378,8 +425,8 @@ class Beacon(tk.Tk):
         menu.grab_release()
 
     def toast(self, text, sound=False):
-        if is_windows() and (self.state() == "withdrawn" or not self.focus_displayof()):
-            if system_notice("Beacon", text):
+        if (is_windows() or is_linux()) and (self.state() == "withdrawn" or not self.focus_displayof()):
+            if notify("Beacon", text):
                 if sound and self.sound_alerts:
                     try:
                         import winsound
@@ -473,8 +520,8 @@ class Beacon(tk.Tk):
                             lambda p=peer, n=incoming[-1]["id"]: self.api.call(
                                 "/conversations/" + str(p) + "/read", "POST", {"through_id": n}
                             ), lambda *_: None)
-            if self.api.token:
-                self.after(3000, self.refresh)
+            if self.api.token and self.running:
+                self.schedule_refresh()
         self.background(work, done)
 
     def avatar_for(self, person):
@@ -534,10 +581,140 @@ class Beacon(tk.Tk):
                             lambda _result, err: self.toast(err or "Buddy added"))
         self.background(work, complete)
 
+    def edit_profile(self):
+        def ready(people, error):
+            if error:
+                messagebox.showerror("Beacon", error, parent=self)
+                return
+            person = next((p for p in people if p["id"] == self.me["id"]), None)
+            if person is None:
+                return
+            dialog = tk.Toplevel(self)
+            dialog.title("Beacon · My profile")
+            dialog.resizable(False, False)
+            pane = ttk.Frame(dialog, padding=18)
+            pane.pack(fill="both", expand=True)
+            ttk.Label(pane, text="Display name").pack(anchor="w")
+            name = ttk.Entry(pane, width=40)
+            name.insert(0, person["display_name"])
+            name.pack(fill="x", pady=(0, 10))
+            ttk.Label(pane, text="Status / away message").pack(anchor="w")
+            status = ttk.Entry(pane, width=40)
+            status.insert(0, person.get("status_text", ""))
+            status.pack(fill="x", pady=(0, 10))
+            def saved():
+                def completed(_res, error):
+                    if error:
+                        messagebox.showerror("Beacon", error, parent=dialog)
+                    else:
+                        self.me["display_name"] = name.get().strip()
+                        dialog.destroy()
+                        self.roster_view()
+                self.background(lambda: self.api.call("/me/profile", "PUT",
+                    {"display_name":name.get().strip(), "status_text":status.get().strip()}), completed)
+            ttk.Button(pane, text="Save profile", command=saved).pack(fill="x")
+            ttk.Button(pane, text="Change profile photo", command=self.upload_avatar).pack(fill="x", pady=(5, 0))
+            ttk.Button(pane, text="Change password", command=self.change_password).pack(fill="x", pady=(5, 0))
+            ttk.Button(pane, text="Cancel", command=dialog.destroy).pack(fill="x", pady=(6, 0))
+        self.background(lambda: self.api.call("/users"), ready)
+
+    def upload_avatar(self):
+        if Image is None:
+            messagebox.showwarning("Beacon", "Install Pillow to upload a profile photo.", parent=self)
+            return
+        path = filedialog.askopenfilename(
+            parent=self, title="Choose a profile photo",
+            filetypes=[("Images", "*.jpg *.jpeg *.png *.webp"), ("All files", "*.*")]
+        )
+        if not path:
+            return
+        def encode():
+            import base64
+            import warnings
+            Image.MAX_IMAGE_PIXELS = 4_000_000
+            with warnings.catch_warnings():
+                warnings.simplefilter("error", Image.DecompressionBombWarning)
+                with Image.open(path) as source:
+                    image = ImageOps.exif_transpose(source).convert("RGB")
+                    image.thumbnail((256, 256), Image.Resampling.LANCZOS)
+                    output = io.BytesIO()
+                    image.save(output, format="JPEG", quality=82, optimize=True)
+            data = output.getvalue()
+            if len(data) > 192 * 1024:
+                raise ValueError("Processed profile photo exceeds 192 KiB")
+            return self.api.call("/me/avatar", "POST", {
+                "mime_type": "image/jpeg",
+                "image_base64": base64.b64encode(data).decode("ascii")
+            })
+        self.background(encode, lambda _result, error: (
+            messagebox.showerror("Beacon", error, parent=self) if error else
+            self.toast("Profile photo updated")
+        ))
+
+    def change_password(self):
+        previous = simpledialog.askstring("Beacon · Password", "Current password:", show="*", parent=self)
+        if not previous:
+            return
+        new = simpledialog.askstring("Beacon · Password", "New password (12+ characters):", show="*", parent=self)
+        if not new:
+            return
+        if len(new) < 12:
+            messagebox.showerror("Beacon", "New password must have at least 12 characters.", parent=self)
+            return
+        def complete(_result, error):
+            if error:
+                messagebox.showerror("Beacon", error, parent=self)
+            else:
+                self.toast("Password changed. Other devices were signed out.")
+        self.background(lambda: self.api.call("/me/password", "POST",
+                      {"current_password": previous, "new_password": new}), complete)
+
+    def manage_devices(self):
+        def show(sessions, error):
+            if error:
+                messagebox.showerror("Beacon", error, parent=self)
+                return
+            dialog = tk.Toplevel(self)
+            dialog.title("Beacon · Signed-in devices")
+            dialog.geometry("440x360")
+            pane = ttk.Frame(dialog, padding=15)
+            pane.pack(fill="both", expand=True)
+            ttk.Label(pane, text="Your signed-in devices", font=("Segoe UI", 13, "bold")).pack(anchor="w")
+            listbox = tk.Listbox(pane)
+            listbox.pack(fill="both", expand=True, pady=8)
+            for item in sessions:
+                listbox.insert("end", item["device_name"] + (" · this device" if item["current"] else ""))
+            def revoke():
+                sel = listbox.curselection()
+                if not sel:
+                    return
+                chosen = sessions[sel[0]]
+                if not messagebox.askyesno("Revoke device", "Sign out " + chosen["device_name"] + "?", parent=dialog):
+                    return
+                def finished(_res, error):
+                    if error:
+                        messagebox.showerror("Beacon", error, parent=dialog)
+                    else:
+                        dialog.destroy()
+                        if chosen["current"]:
+                            clear_session()
+                            self.api.token = None
+                            self.login_view()
+                        else:
+                            self.manage_devices()
+                self.background(lambda: self.api.call("/sessions/" + str(chosen["id"]), "DELETE"), finished)
+            ttk.Button(pane, text="Revoke selected device", command=revoke).pack(fill="x")
+            ttk.Button(pane, text="Close", command=dialog.destroy).pack(fill="x", pady=6)
+        self.background(lambda: self.api.call("/sessions"), show)
+
     def logout(self):
         clear_session()
         token, base = self.api.token, self.api.base
         self.api.token = None
+        if self.refresh_timer is not None:
+            try: self.after_cancel(self.refresh_timer)
+            except tk.TclError: pass
+            self.refresh_timer = None
         self.polling = False
         self.loaded_once = False
         self.old_presence = None

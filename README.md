@@ -4,7 +4,7 @@
 
 The server runs as **one Docker container with a persistent SQLite volume**. Clients communicate through a JSON HTTP API and WebSocket events. No external hosted messaging service is needed.
 
-## Current version: 0.6.0 (development)
+## Current version: 0.7.0 (development)
 
 | Capability | Web | Windows/Linux desktop | Android |
 | --- | --- | --- | --- |
@@ -46,6 +46,9 @@ For standalone installations only, use `compose.yaml` from a local repository ch
 - [Security, data protection and limitations](docs/SECURITY.md)
 - [Troubleshooting and diagnostics](docs/TROUBLESHOOTING.md)
 - [Development and testing](docs/DEVELOPMENT.md)
+- [Client parity](docs/CLIENT-PARITY.md)
+- [Platform builds](docs/PLATFORM-BUILDS.md)
+- [Release checklist](docs/RELEASE-CHECKLIST.md)
 - [Changelog](CHANGELOG.md)
 
 ## Project boundaries
@@ -54,8 +57,20 @@ Beacon is deliberately a personal, text-first instant messenger. It does **not**
 
 License: no license has been selected or granted in this repository; the private repository owner retains all applicable rights.
 
-## Paired Windows + Android release — v0.6.0
+## Paired Windows + Android release — v0.7.0
 
-Windows now has Windows-user-scoped DPAPI session restoration, optional tray operation, Windows toast integration, and a GitHub Actions workflow for a versioned `Beacon-Windows-0.6.0.exe`. Android now has an explicitly enabled `remoteMessaging` foreground service with an ongoing notification, Stop action, a persisted event cursor, and LAN message/presence polling. Android uses the same Docker account, sessions, buddies and messages as the desktop client. No cloud notification provider is required.
+Windows now has Windows-user-scoped DPAPI session restoration, optional tray operation, Windows toast integration, and a GitHub Actions workflow for a versioned `Beacon-Windows-0.7.0.exe`. Android now has an explicitly enabled `remoteMessaging` foreground service with an ongoing notification, Stop action, a persisted event cursor, and LAN message/presence polling. Android uses the same Docker account, sessions, buddies and messages as the desktop client. No cloud notification provider is required.
 
 The existence of the packaging workflows does **not** mean a verified EXE or APK is available. Check the individual Actions runs and artifacts. See [Windows build and tray documentation](clients/desktop/README.md) and [Android foreground-monitor documentation](clients/android/README.md).
+
+## v0.7.0 — Windows, Linux and Android together
+
+One cohesive three-client release, with corresponding server, packaging, tests and docs:
+
+- **Windows:** protected login via DPAPI, tray and native notices, own-profile editing, signed-in device manager, saved IM-history search and persisted notification preferences.
+- **Linux:** optional system keyring login (never plaintext), optional indicator tray, notify-send alerts, the same profile/devices/search UI as Windows, and Linux tar.gz distribution with desktop entry and per-user install/uninstall scripts.
+- **Android:** native profile/status editor, photo picker/upload, device-session management, conversation search, non-overlapping refreshes and notifications that open the sender's conversation.
+- **Server:** account-scoped message-history search that treats SQL wildcard characters literally.
+- **Dokploy:** remains the primary Git-backed Compose deployment, with one persistent server; no manual `/root/beacon` checkout.
+
+See [Client parity](docs/CLIENT-PARITY.md), [Platform builds](docs/PLATFORM-BUILDS.md) and the [release checklist](docs/RELEASE-CHECKLIST.md). **No installer/APK/EXE is considered validated until a successful build and device test.**

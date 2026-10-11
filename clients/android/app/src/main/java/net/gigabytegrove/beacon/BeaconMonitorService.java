@@ -221,7 +221,7 @@ public final class BeaconMonitorService extends Service {
                     cursor = id;
                     int sender = event.optInt("sender_id");
                     JSONObject buddy = contacts.get(sender);
-                    if (hadCursor && !prefs.getBoolean("activity_visible", false) &&
+                    if (hadCursor && !MainActivity.isUiVisible &&
                             buddy != null && buddy.optInt("muted", 0) == 0 &&
                             buddy.optInt("unread_count", 0) > 0) {
                         showMessage(buddy, event);
@@ -245,9 +245,11 @@ public final class BeaconMonitorService extends Service {
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        PendingIntent open = PendingIntent.getActivity(this, 0,
-                new Intent(this, MainActivity.class)
-                        .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        int buddyId = buddy.optInt("id");
+        Intent target = new Intent(this, MainActivity.class)
+                .putExtra("beacon_peer_id", buddyId)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent open = PendingIntent.getActivity(this, buddyId, target,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         String nickname = buddy.optString("nickname", "");
         String person = nickname.isEmpty() ? buddy.optString("display_name", "Buddy") : nickname;

@@ -52,3 +52,9 @@ The encrypted local token files do **not** make chats end-to-end encrypted; the 
 ## Dokploy deployment boundary
 
 The dedicated Dokploy file defaults to publishing TCP 8765 on all host interfaces; enforce the host firewall or set `BEACON_BIND_IP` to a specific LAN interface. With Dokploy Domains and HTTPS, use `BEACON_BIND_IP=127.0.0.1` for host-local access, leaving proxy access through `dokploy-network`. Configure the admin bootstrap password only in Dokploy's Environment UI, not in committed files. Back up and restrict the persistent volume `beacon-data`.
+
+## v0.7.0 desktop session storage and search
+
+Windows can save a per-account token via Windows DPAPI. Linux can optionally save one through its desktop secret store/keyring, but **never** writes a plaintext token when no secret backend is available. Preference files contain only boolean notification settings. Android continues to store tokens with Android Keystore AES-GCM.
+
+The new message search endpoint is bearer-authenticated, restricts matches to messages sent or received by that account, validates the optional peer ID and escapes SQL LIKE pattern wildcards. Notifications may reveal message senders or content via OS lock-screen policy; users can mute contacts and configure notifications. None of this provides end-to-end encryption.

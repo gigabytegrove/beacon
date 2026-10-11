@@ -13,6 +13,10 @@ import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.net.Uri;
+import android.content.ContentResolver;
+import java.net.URLEncoder;
+import java.util.concurrent.atomic.AtomicBoolean;
 import android.os.Handler;
 import android.os.Looper;
 import android.text.InputType;
@@ -51,11 +55,14 @@ import java.util.concurrent.Executors;
  * No remote push dependency. Polling is active only while this Activity is visible.
  */
 public final class MainActivity extends Activity {
+    public static volatile boolean isUiVisible = false;
     private static final int BACKGROUND = Color.rgb(15, 28, 46);
     private static final int SURFACE = Color.rgb(30, 52, 78);
     private static final int TEXT = Color.rgb(235, 244, 255);
     private static final int MUTED = Color.rgb(163, 189, 214);
     private static final long REFRESH_MS = 3500L;
+    private static final int PICK_AVATAR_REQUEST = 741;
+    private final AtomicBoolean pollInFlight = new AtomicBoolean(false);
     private final ExecutorService worker = Executors.newSingleThreadExecutor();
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final Map<Integer, Integer> previousUnread = new HashMap<>();
@@ -127,6 +134,8 @@ public final class MainActivity extends Activity {
                 checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 400);
         }
+        final int launchPeer = getIntent() == null ? -1 :
+                getIntent().getIntExtra("beacon_peer_id", -1);
         String[] previous = session.load();
         if (previous != null) {
             server = previous[0]; token = previous[1];
@@ -141,6 +150,7 @@ public final class MainActivity extends Activity {
                     ensureMonitorIfEnabled();
                     rosterScreen();
                     restartTicker();
+                    if (launchPeer > 0) openIncomingConversation(launchPeer);
                 }
             });
             loginScreen("Restoring your session…");
@@ -150,20 +160,19 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         foreground = true;
-        getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
-                .edit().putBoolean("activity_visible", true).apply();
+        isUiVisible = true;
         restartTicker();
     }
 
     @Override protected void onPause() {
         foreground = false;
-        getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
-                .edit().putBoolean("activity_visible", false).apply();
+        isUiVisible = false;
         handler.removeCallbacks(ticker);
         super.onPause();
     }
 
     @Override protected void onDestroy() {
+        isUiVisible = false;
         handler.removeCallbacksAndMessages(null);
         worker.shutdownNow();
         super.onDestroy();
@@ -276,6 +285,7 @@ public final class MainActivity extends Activity {
     }
 
     private void loginScreen(String message) {
+        pollInFlight.set(false);
         activeBuddy = null;
         LinearLayout layout = vertical();
         layout.addView(text("◉ Beacon", 30, TEXT));
@@ -334,10 +344,35 @@ public final class MainActivity extends Activity {
                         initializedUnread = false;
                         rosterScreen();
                         restartTicker();
+                        int incoming = getIntent() == null ? -1 : getIntent().getIntExtra("beacon_peer_id", -1);
+                        if (incoming > 0) openIncomingConversation(incoming);
                     });
         });
         layout.addView(signIn);
         setRoot(layout);
+    }
+
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        if (authenticated && intent != null) {
+            int peer = intent.getIntExtra("beacon_peer_id", -1);
+            if (peer > 0) openIncomingConversation(peer);
+        }
+    }
+
+    private void openIncomingConversation(int peer) {
+        async(() -> (JSONArray) request("/directory", "GET", null), (users, error) -> {
+            if (error != null || users == null) return;
+            for (int i = 0; i < users.length(); i++) {
+                JSONObject item = users.optJSONObject(i);
+                if (item != null && item.optInt("id") == peer) {
+                    openChat(peer, item.optString("display_name", "Conversation"));
+                    break;
+                }
+            }
+            getIntent().removeExtra("beacon_peer_id");
+        });
     }
 
     private void rosterScreen() {
@@ -376,6 +411,7 @@ public final class MainActivity extends Activity {
     }
 
     private void poll() {
+        if (!authenticated || token == null || !pollInFlight.compareAndSet(false, true)) return;
         final Integer peer = activeBuddy;
         async(() -> {
             request("/presence", "POST", makeBody("status", currentStatus));
@@ -398,6 +434,7 @@ public final class MainActivity extends Activity {
             }
             return new Snapshot(buddies, groups, messages, typing, peer);
         }, (result, error) -> {
+            pollInFlight.set(false);
             if (error != null) return;
             Snapshot snap = result;
             knownBuddies.clear();
@@ -497,7 +534,8 @@ public final class MainActivity extends Activity {
         LinearLayout title = new LinearLayout(this);
         title.setOrientation(LinearLayout.HORIZONTAL);
         title.addView(button("‹ Back", v -> { rosterScreen(); restartTicker(); }));
-        title.addView(text(name, 21, TEXT));
+        title.addView(text(name, 21, TEXT), new LinearLayout.LayoutParams(0, -2, 1));
+        title.addView(button("Search", v -> searchMessages(id)), new LinearLayout.LayoutParams(dp(98), -2));
         layout.addView(title);
         ScrollView scroll = new ScrollView(this);
         messageScroll = scroll;
@@ -637,22 +675,24 @@ public final class MainActivity extends Activity {
     }
 
     private void accountMenu() {
-        String[] options = {"Rename a group", "Delete a group", "Change password",
-                "Sign out other devices", monitorEnabled()
-                    ? "Turn off background notifications" : "Turn on background notifications",
+        String[] options = {"My profile and photo", "Signed-in devices", "Rename a group",
+                "Delete a group", "Change password", "Sign out other devices",
+                monitorEnabled() ? "Turn off background notifications" : "Turn on background notifications",
                 "Sign out"};
         new AlertDialog.Builder(this).setTitle("Account and groups")
                 .setItems(options, (dialog, which) -> {
-                    if (which == 0 || which == 1) chooseGroup(which == 0);
-                    if (which == 2) changePassword();
-                    if (which == 3) new AlertDialog.Builder(this)
+                    if (which == 0) editProfile();
+                    if (which == 1) manageDevices();
+                    if (which == 2 || which == 3) chooseGroup(which == 2);
+                    if (which == 4) changePassword();
+                    if (which == 5) new AlertDialog.Builder(this)
                             .setTitle("Revoke other devices?")
                             .setMessage("Keep this device signed in and revoke every other session?")
                             .setNegativeButton("Cancel", null)
                             .setPositiveButton("Revoke", (d, w) ->
                                     update("/sessions/revoke-others", "POST", makeBody()))
                             .show();
-                    if (which == 4) {
+                    if (which == 6) {
                         if (monitorEnabled()) {
                             stopMonitor();
                             Toast.makeText(this, "Background monitoring stopped", Toast.LENGTH_SHORT).show();
@@ -665,7 +705,7 @@ public final class MainActivity extends Activity {
                                 .show();
                         }
                     }
-                    if (which == 5) logout();
+                    if (which == 7) logout();
                 }).show();
     }
 
@@ -690,6 +730,164 @@ public final class MainActivity extends Activity {
                             .setPositiveButton("Delete", (d, w) ->
                                     update("/groups/" + id, "DELETE", null)).show();
                 }).show();
+    }
+
+    private void searchMessages(int peer) {
+        EditText search = edit("Search conversation", false);
+        new AlertDialog.Builder(this).setTitle("Search IM history")
+                .setView(search).setNegativeButton("Cancel", null)
+                .setPositiveButton("Search", (d, w) -> {
+                    String phrase = search.getText().toString().trim();
+                    if (phrase.length() < 2 || phrase.length() > 100) {
+                        alert("Search requires 2 to 100 characters.");
+                        return;
+                    }
+                    async(() -> (JSONArray) request("/messages/search?q="
+                            + URLEncoder.encode(phrase, "UTF-8") + "&peer_id=" + peer,
+                            "GET", null), (result, error) -> {
+                        if (error != null) {
+                            alert(error.getMessage());
+                            return;
+                        }
+                        StringBuilder output = new StringBuilder();
+                        for (int i = result.length() - 1; i >= 0; i--) {
+                            JSONObject entry = result.optJSONObject(i);
+                            if (entry == null) continue;
+                            output.append(entry.optInt("sender_id") == myUserId ? "You" : activeName)
+                                  .append(": ").append(entry.optString("body")).append("\n\n");
+                        }
+                        new AlertDialog.Builder(this).setTitle("Search results")
+                                .setMessage(output.length() == 0 ? "No matches" : output.toString())
+                                .setPositiveButton("Close", null).show();
+                    });
+                }).show();
+    }
+
+    private void editProfile() {
+        async(() -> (JSONArray) request("/users", "GET", null), (people, error) -> {
+            if (error != null) {
+                alert(error.getMessage());
+                return;
+            }
+            JSONObject person = null;
+            for (int i = 0; i < people.length(); i++) {
+                JSONObject candidate = people.optJSONObject(i);
+                if (candidate != null && candidate.optInt("id") == myUserId) {
+                    person = candidate;
+                    break;
+                }
+            }
+            if (person == null) { alert("Profile unavailable."); return; }
+            LinearLayout content = vertical();
+            EditText name = edit("Display name", false);
+            name.setText(person.optString("display_name"));
+            EditText status = edit("Status or away message", false);
+            status.setText(person.optString("status_text"));
+            content.addView(name);
+            content.addView(status);
+            content.addView(button("Change photo…", v -> chooseAvatar()));
+            new AlertDialog.Builder(this).setTitle("Your Beacon profile")
+                    .setView(content).setNegativeButton("Cancel", null)
+                    .setPositiveButton("Save", (d,w) -> {
+                        String displayName = name.getText().toString().trim();
+                        if (displayName.isEmpty()) { alert("Display name cannot be blank."); return; }
+                        update("/me/profile", "PUT", makeBody(
+                            "display_name", displayName, "status_text",
+                            status.getText().toString().trim()));
+                    }).show();
+        });
+    }
+
+    private void chooseAvatar() {
+        Intent select = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        select.setType("image/*");
+        select.addCategory(Intent.CATEGORY_OPENABLE);
+        try {
+            startActivityForResult(select, PICK_AVATAR_REQUEST);
+        } catch (RuntimeException error) {
+            alert("No image picker is available on this device.");
+        }
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode != PICK_AVATAR_REQUEST || resultCode != RESULT_OK || data == null
+                || data.getData() == null) return;
+        final Uri uri = data.getData();
+        async(() -> {
+            ContentResolver resolver = getContentResolver();
+            BitmapFactory.Options options = new BitmapFactory.Options();
+            options.inJustDecodeBounds = true;
+            try (InputStream bounds = resolver.openInputStream(uri)) {
+                if (bounds == null) throw new Exception("Image unavailable");
+                BitmapFactory.decodeStream(bounds, null, options);
+            }
+            if (options.outWidth <= 0 || options.outHeight <= 0) throw new Exception("Invalid image");
+            int sample = 1;
+            while (Math.max(options.outWidth, options.outHeight) / sample > 512) sample *= 2;
+            options.inJustDecodeBounds = false;
+            options.inSampleSize = sample;
+            Bitmap photo;
+            try (InputStream image = resolver.openInputStream(uri)) {
+                if (image == null) throw new Exception("Image unavailable");
+                photo = BitmapFactory.decodeStream(image, null, options);
+            }
+            if (photo == null) throw new Exception("Cannot decode image");
+            int longest = Math.max(photo.getWidth(), photo.getHeight());
+            int width = Math.max(1, Math.round(photo.getWidth() * 256f / longest));
+            int height = Math.max(1, Math.round(photo.getHeight() * 256f / longest));
+            Bitmap small = Bitmap.createScaledBitmap(photo, width, height, true);
+            ByteArrayOutputStream stream = new ByteArrayOutputStream();
+            if (!small.compress(Bitmap.CompressFormat.JPEG, 80, stream))
+                throw new Exception("Unable to process image");
+            photo.recycle();
+            if (small != photo) small.recycle();
+            byte[] image = stream.toByteArray();
+            if (image.length > 192 * 1024) throw new Exception("Photo is too large");
+            return request("/me/avatar", "POST", makeBody(
+                    "mime_type", "image/jpeg",
+                    "image_base64", Base64.encodeToString(image, Base64.NO_WRAP)));
+        }, (result, error) -> {
+            if (error != null) alert(error.getMessage());
+            else { Toast.makeText(this, "Profile photo updated", Toast.LENGTH_SHORT).show(); poll(); }
+        });
+    }
+
+    private void manageDevices() {
+        async(() -> (JSONArray) request("/sessions", "GET", null), (sessions, error) -> {
+            if (error != null) { alert(error.getMessage()); return; }
+            if (sessions.length() == 0) { alert("No active sessions found."); return; }
+            String[] names = new String[sessions.length()];
+            for (int i = 0; i < sessions.length(); i++) {
+                JSONObject item = sessions.optJSONObject(i);
+                names[i] = item.optString("device_name", "Device")
+                        + (item.optBoolean("current") ? " · this device" : "");
+            }
+            new AlertDialog.Builder(this).setTitle("Signed-in devices")
+                    .setItems(names, (d, which) -> {
+                        JSONObject selected = sessions.optJSONObject(which);
+                        if (selected == null) return;
+                        new AlertDialog.Builder(this).setTitle("Sign out device?")
+                            .setMessage(names[which])
+                            .setNegativeButton("Cancel", null)
+                            .setPositiveButton("Revoke", (confirm, button) -> {
+                                boolean current = selected.optBoolean("current");
+                                int id = selected.optInt("id");
+                                async(() -> request("/sessions/" + id, "DELETE", null),
+                                      (result, problem) -> {
+                                    if (problem != null) alert(problem.getMessage());
+                                    else if (current) {
+                                        stopMonitor();
+                                        token = null;
+                                        authenticated = false;
+                                        session.clear();
+                                        loginScreen("This device was signed out.");
+                                    } else manageDevices();
+                                });
+                            }).show();
+                    })
+                    .setNegativeButton("Close", null).show();
+        });
     }
 
     private void changePassword() {

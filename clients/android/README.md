@@ -1,4 +1,4 @@
-# Beacon Android — v0.6.0 source
+# Beacon Android — v0.7.0 source
 
 This is Beacon's **native Android application source**, not a browser wrapper or WebView. It shares the Docker server used by the Windows, Linux and browser clients.
 
@@ -18,7 +18,7 @@ cd clients/android
 gradle --no-daemon :app:assembleDebug
 ~~~
 
-The expected **output after a successful local build** is `app/build/outputs/apk/debug/Beacon-Android-0.6.0-debug.apk`. This repository does not currently include the generated Gradle wrapper JAR or a prebuilt APK. **A device install and Gradle build have not yet been verified in this environment.**
+The expected **output after a successful local build** is `app/build/outputs/apk/debug/Beacon-Android-0.7.0-debug.apk`. This repository does not currently include the generated Gradle wrapper JAR or a prebuilt APK. **A device install and Gradle build have not yet been verified in this environment.**
 
 ## Features implemented in source
 
@@ -48,7 +48,7 @@ The Android manifest intentionally enables cleartext HTTP so a local server can 
 
 The release is designed for Android 8.0 (API 26) and later, targeting API 35. No audio/video or WebRTC functionality is included.
 
-## v0.6.0: Background LAN monitoring (opt-in)
+## v0.7.0: Background LAN monitoring (opt-in)
 
 Open **Account → Turn on background notifications**. Android will show a confirmation, then start Beacon's foreground service with an ongoing **Beacon is listening on your LAN** notification and a **Stop** action. The service checks the Docker server approximately every seven seconds, uses a persisted per-session message ID cursor to catch up after brief disconnections, respects buddy mute preferences and refreshes your selected Online/Away/Busy presence. Disable it from **Account** or Stop, or sign out to end monitoring.
 
@@ -60,4 +60,12 @@ Build with Android Studio, JDK 17, Gradle 8.9 and SDK 35. The GitHub Android wor
 
 Source: `app/src/main/java/net/gigabytegrove/beacon/BeaconMonitorService.java`.
 
-**Server deployment:** Windows and Android share the Docker server managed via [Dokploy Compose](../../docs/DOKPLOY.md). The v0.6.0 Android foreground monitor requires `GET /api/events/latest`, so deploy v0.6.0 server first. Android APK builds are independent of the Dokploy server.
+**Server deployment:** Windows and Android share the Docker server managed via [Dokploy Compose](../../docs/DOKPLOY.md). The v0.7.0 Android foreground monitor requires `GET /api/events/latest`, so deploy v0.7.0 server first. Android APK builds are independent of the Dokploy server.
+
+## v0.7.0 account controls and IM history
+
+The Android Account menu now includes **My profile and photo** (display name, away/status message, Android document picker for an image), **Signed-in devices** (revoke one device), and the existing password change and sign-out-other-devices actions. Individual conversation screens have **Search**, backed by the authenticated `/api/messages/search` endpoint.
+
+The Activity now prevents overlapping foreground refresh requests and does not persist a stale foreground/visible flag across process crashes. An incoming IM notification can open its sender's conversation after the saved session is authenticated. The background LAN monitor is still opt-in, notification-visible and may be interrupted by Android battery restrictions or LAN disconnections.
+
+After a **successful** Android Gradle build, the expected APK filename is `Beacon-Android-0.7.0-debug.apk`. Source code and workflow configuration alone do not establish that this APK was built or tested on hardware.

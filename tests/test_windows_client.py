@@ -27,7 +27,7 @@ def test_os_guard_and_protected_storage():
 
 def test_source_entrypoints():
     desktop = (MODULE.parent / "beacon_desktop.py").read_text(encoding="utf-8")
-    assert "self.restore_windows_session()" in desktop
+    assert "self.restore_saved_session()" in desktop
     assert "self.ensure_tray()" in desktop
     assert "def close_window(self)" in desktop
     assert "system_notice(" in desktop

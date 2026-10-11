@@ -43,3 +43,13 @@ Install optional Windows dependencies with `py -3 -m pip install -r clients/desk
 ## Android background notification delays
 
 Enable **Account → Turn on background notifications** and look for the persistent Beacon listening notification. Grant Android 13+ notification permission. This monitoring is optional and depends on an active, permitted Android foreground service, a reachable LAN and device power-management policy. It is not available after a user force-stop, and it won't silently relaunch at boot. Tap Stop in the persistent notification to disable monitoring. Reopen Beacon to retrieve messages after a disconnected period.
+
+## Linux tray, notifications and remembered login
+
+Install the distro's Tkinter package and the optional dependencies in `clients/desktop/requirements-linux.txt`. Linux desktop keyring/Secret Service must be available to remember a login; otherwise the client signs in normally but only stores the bearer token in memory. A missing AppIndicator backend means close-to-tray is disabled. A working `notify-send` binary enables native notifications; otherwise Beacon shows a Tk dialog.
+
+Extract the Linux release tarball and run `./install.sh` for an unprivileged, per-user installation. Run `./uninstall.sh` from the archive to uninstall. `~/.local/bin` must be on your PATH.
+
+## Client profile, device manager, or conversation search
+
+On Windows/Linux, use the Profile and Devices buttons on the buddy list or Search history in an IM window. On Android, open the Account menu for Profile/Devices and Search inside a conversation. Searches need at least two characters; they only return messages involving the signed-in account. 401 errors typically indicate revoked/expired sessions.

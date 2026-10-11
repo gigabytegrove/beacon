@@ -54,3 +54,9 @@ GitHub Actions job failures with no runner assigned and no executed steps are in
 ## Dokploy release requirement
 
 Dokploy is the primary deployment target. Server/Docker environment changes must update `compose.dokploy.yaml`, `docs/DOKPLOY.md` and the README **in the same cohesive release commit**. Use a Git-backed Dokploy Compose service with Compose Path `./compose.dokploy.yaml`, not manual `git pull` into `/root/beacon`. Keep the standalone `compose.yaml` functional for other environments.
+
+## Three native client release gates, v0.7.0
+
+Windows, Linux and Android are now built and documented **in tandem**. A major release must include complete client, server, platform packaging, tests and updated documentation. CI workflows: `windows.yml`, `linux.yml`, `android.yml`, plus server `ci.yml`. New tests include `test_message_search.py`, `test_desktop_platform.py`, and `test_repository_contract.py`.
+
+Use [client parity](CLIENT-PARITY.md), [platform build instructions](PLATFORM-BUILDS.md), and [the release checklist](RELEASE-CHECKLIST.md). In particular, do not call APK/EXE/Linux binaries validated if GitHub did not allocate any build runner or if no artifact exists.
