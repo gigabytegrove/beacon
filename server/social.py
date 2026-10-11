@@ -88,6 +88,7 @@ async def add_group(data: GroupIn, request: Request):
     return {"id": group_id, "name": name}
 
 
+@router.post("/groups/{group_id}/rename")
 @router.patch("/groups/{group_id}")
 async def rename_group(group_id: int, data: GroupIn, request: Request):
     user_id = owner(request)
@@ -124,6 +125,7 @@ async def delete_group(group_id: int, request: Request):
     return {"ok": True}
 
 
+@router.post("/buddies/{buddy_id}/edit")
 @router.patch("/buddies/{buddy_id}")
 async def edit_buddy(buddy_id: int, data: BuddyEdit, request: Request):
     user_id = owner(request)
