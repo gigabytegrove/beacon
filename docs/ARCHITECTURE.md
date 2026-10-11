@@ -4,7 +4,7 @@
 
 - **Docker server:** FastAPI application under `server/`, with SQLite stored on a persistent Docker volume.
 - **Web client:** `server/static/index.html` is intentionally dependency-light. Buddy list and chats are separate browser windows.
-- **Desktop:** `clients/desktop/beacon_desktop.py` is a native Tkinter buddy list with per-contact chat windows; it currently polls every three seconds.
+- **Desktop:** `clients/desktop-go` is the primary **Go/Fyne** Windows/Linux client, producing native executable files from shared source. The former `clients/desktop/beacon_desktop.py` is a deprecated prototype, not shipped.
 - **Android:** `clients/android` is a native Java Android project with Android Keystore-backed token storage and native list/chat screens; it polls while the Activity is visible.
 
 ## Data model
@@ -52,3 +52,11 @@ Dokploy's Git-backed **Docker Compose** service uses `./compose.dokploy.yaml` (b
 `clients/desktop/platform_integration.py` is a shared Windows/Linux adapter for OS credential storage, notifications, optional tray controls and non-secret preferences. On Windows tokens can be protected with Windows DPAPI; on Linux an available desktop keyring is required for remembered login. Unavailable secure storage means **no** saved token, never a plaintext fallback.
 
 Android retains Android Keystore sessions and a user-opted-in `remoteMessaging` foreground service; the Activity and service coordinate visibility via a process-local flag instead of an obsolete persisted value. Message notifications may carry the sender's user ID to open the relevant chat. Conversation search is handled entirely by an authenticated server SQL query.
+
+## Go-native desktop architecture (v0.8.0)
+
+The Go desktop client uses `clients/desktop-go/go.mod` with pinned Fyne 2.8.1 and go-keyring. The pure-Go `internal/beacon` package owns HTTP authentication, bearer sessions, buddy/groups API, typing/presence, conversation search and tests, while `cmd/beacon` owns windows, tray, notifications, dialogs and image rendering. OS-specific credential storage is provided by the native credential manager/secret service via the Go keyring library; no plaintext token fallback exists. User preference booleans may be stored by Fyne under the user's app settings.
+
+Windows/Linux executables are **compiled by CI** (Go plus C compiler and Fyne graphics headers) and require no Python, pip or Tkinter to run. Linux runtime OpenGL/window-system libraries may depend on distribution. The application uses authenticated HTTP polling at approximately 3–3.5 seconds; future optional WebSocket push can reduce traffic but is not part of this release. Android remains native Java; all clients use one Dokploy Docker server.
+
+The legacy Python/Tkinter GUI is not part of release packaging; it remains in the repository temporarily for reference only.

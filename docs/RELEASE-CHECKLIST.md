@@ -7,7 +7,7 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] README, changelog, CLIENT-PARITY, API, SECURITY, troubleshooting and platform READMEs agree with the actual implementation.
 - [ ] `compose.dokploy.yaml` builds and deploys via Git-backed Dokploy Compose without any manually cloned `/root/beacon`.
 - [ ] Document environment variables, ports, volume behavior, backup/restore and reverse-proxy WebSockets.
-- [ ] Version numbers match on server, Android, Windows and Linux package names.
+- [ ] Server (v0.8.0) and Windows/Linux Go package names (v0.8.0) match; Android native Java release is tracked independently (v0.7.x until rebuilt).
 
 ## Server and security
 - [ ] Python syntax checks and unit/integration tests pass.
@@ -19,14 +19,14 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] Multi-device unread/read state, offline catch-up, typing and presence work.
 
 ## Windows
-- [ ] PyInstaller EXE artifact exists, launches, logs in and sends/receives IMs.
+- [ ] **Go/Fyne** Windows EXE artifact exists, launches, logs in and sends/receives IMs; no Python runtime or pip needed.
 - [ ] Buddy list persists in tray; right-click and Open/Quit work.
 - [ ] DPAPI remembered session restores only under the correct Windows account.
 - [ ] Native toasts and fallback pop-up alerts work; no plaintext tokens in logs/files.
 - [ ] Profile editing, device management and search work.
 
 ## Linux
-- [ ] PyInstaller binary packages in tar.gz with installer, desktop entry and icon.
+- [ ] **Go/Fyne** Linux binary packages in tar.gz with installer, desktop entry and icon; no Python runtime or pip needed.
 - [ ] Install/uninstall scripts work as unprivileged user.
 - [ ] Buddy list and separate IM windows work on target desktop environments.
 - [ ] Secure keyring login is optional and never falls back to plaintext tokens.
@@ -49,3 +49,14 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] Verify Dokploy health, HTTP routes and WebSocket upgrades through reverse proxy.
 - [ ] Test simultaneous logins on Windows, Linux and Android.
 - [ ] Publish only verified binaries with their build checksums; don't claim a passing CI run when no runner was assigned.
+
+## Go native migration acceptance
+
+- [ ] Go `internal/beacon` transport tests pass on Windows and Linux CI.
+- [ ] Fyne windows, tray, dialogs and credential store compile against pinned Fyne 2.8.1.
+- [ ] The old Python/Tkinter client is not packaged or required for Windows/Linux.
+- [ ] Windows binary launches on a clean PC without Python/Go/Qt/Node installers.
+- [ ] Linux binary runs on supported graphical desktops with standard system graphics libraries, without Python.
+- [ ] Numeric and JSON boolean `muted`/`is_admin` server responses decode correctly.
+- [ ] Buddy groups/nicknames/mute/unread fields are returned after a real Dokploy server deployment.
+- [ ] Release artifacts have platform-specific SHA256 hashes and have been manually tested.

@@ -94,3 +94,9 @@ When first enabling Android background monitoring, the service requests `GET /ap
 ## v0.7.0: authenticated message search
 
 `GET /api/messages/search?q=search+phrase&peer_id=42&limit=50` returns most recent matching messages (descending by ID). The peer ID is optional; omit it to search every conversation involving the current user. Search is authenticated, accepts 2–100 characters, caps results at 100, and treats `%`, `_`, and backslashes as literal text. It never searches other users' conversations, and does not require a separate search engine. SQLite LIKE scans may be slower in very large databases.
+
+## Go desktop compatibility (v0.8.0)
+
+Windows/Linux Go clients consume the same authenticated endpoints used by Android and the browser; **no separate Go server or protocol** is required. Their `internal/beacon` transport validates the server URL, limits API response sizes, rejects cross-origin redirects and uses bearer tokens from an optional OS keyring.
+
+Historically, SQLite-backed JSON sometimes serializes `is_admin` and `muted` as numeric `0`/`1`, while login may return JSON `true`/`false`. The Go models handle both safely. The v0.8.0 buddy roster also exposes per-account `nickname`, `group_id`, `group_name` and `muted`, correcting missing fields from earlier releases.

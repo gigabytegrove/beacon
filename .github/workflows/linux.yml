@@ -1,43 +1,47 @@
-name: Beacon Linux Client
+name: Beacon Go Linux Client
 on:
   push:
     paths:
-      - 'clients/desktop/**'
-      - 'tests/test_desktop_platform.py'
+      - 'clients/desktop-go/**'
+      - 'clients/desktop/linux/**'
       - '.github/workflows/linux.yml'
   pull_request:
     paths:
-      - 'clients/desktop/**'
+      - 'clients/desktop-go/**'
       - '.github/workflows/linux.yml'
 jobs:
   linux:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-go@v5
         with:
-          python-version: '3.12'
-      - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y python3-tk libappindicator3-1 libnotify-bin
-      - name: Install Python dependencies
+          go-version: '1.25.x'
+          cache-dependency-path: clients/desktop-go/go.mod
+      - name: Native GUI build dependencies
         run: |
-          python -m pip install -r requirements-dev.txt
-          python -m pip install -r clients/desktop/requirements-linux.txt
-      - name: Run checks
+          sudo apt-get update
+          sudo apt-get install -y gcc pkg-config libgl1-mesa-dev xorg-dev libxkbcommon-dev
+      - name: Test Go HTTP client and build binary
         run: |
-          python -m compileall -q server clients/desktop tests
-          python -m pytest -q
-      - name: Package Linux client
+          set -Eeuo pipefail
+          cd clients/desktop-go
+          go mod tidy
+          go test -race ./internal/beacon
+          CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o ../../beacon ./cmd/beacon
+      - name: Assemble self-contained distribution archive
         run: |
-          python -m PyInstaller --clean --noconfirm --onefile --windowed --name beacon --collect-all pystray clients/desktop/beacon_desktop.py
-          mkdir -p dist/Beacon-Linux-0.7.0
-          cp dist/beacon dist/Beacon-Linux-0.7.0/beacon
-          cp clients/desktop/linux/beacon.desktop clients/desktop/linux/beacon.svg clients/desktop/linux/install.sh clients/desktop/linux/uninstall.sh dist/Beacon-Linux-0.7.0/
-          chmod +x dist/Beacon-Linux-0.7.0/install.sh dist/Beacon-Linux-0.7.0/uninstall.sh
-          tar -C dist -czf dist/Beacon-Linux-0.7.0.tar.gz Beacon-Linux-0.7.0
-          sha256sum dist/Beacon-Linux-0.7.0.tar.gz
+          set -Eeuo pipefail
+          bash -n clients/desktop/linux/install.sh
+          bash -n clients/desktop/linux/uninstall.sh
+          mkdir -p dist/Beacon-Linux-0.8.0
+          cp beacon dist/Beacon-Linux-0.8.0/beacon
+          cp clients/desktop/linux/beacon.desktop clients/desktop/linux/beacon.svg clients/desktop/linux/install.sh clients/desktop/linux/uninstall.sh dist/Beacon-Linux-0.8.0/
+          chmod +x dist/Beacon-Linux-0.8.0/beacon dist/Beacon-Linux-0.8.0/install.sh dist/Beacon-Linux-0.8.0/uninstall.sh
+          tar -C dist -czf dist/Beacon-Linux-0.8.0.tar.gz Beacon-Linux-0.8.0
+          sha256sum dist/Beacon-Linux-0.8.0.tar.gz
       - uses: actions/upload-artifact@v4
         with:
-          name: beacon-linux-0.7.0
-          path: dist/Beacon-Linux-0.7.0.tar.gz
+          name: beacon-linux-go-0.8.0
+          path: dist/Beacon-Linux-0.8.0.tar.gz
           if-no-files-found: error

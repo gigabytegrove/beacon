@@ -1,33 +1,47 @@
 # Beacon platform builds
 
-## Windows
+## Normal users: NO Python or Go setup
 
-Requirements: Windows 10/11, Python 3.12, Tkinter, `clients/desktop/requirements-windows.txt`.
+Windows and Linux clients are built in CI from **Go + Fyne**, then distributed as executables. Download and launch the verified compiled application. **Do not install Python, Tkinter, pip, Go or Fyne** to run it.
+
+| Platform | Build pipeline | Expected release artifact |
+|---|---|---|
+| Windows x64 | Go/Fyne + MinGW-w64, `.github/workflows/windows.yml` | `Beacon-Windows-0.8.0.exe` |
+| Linux x64 | Go/Fyne + GCC/OpenGL/X11 headers, `.github/workflows/linux.yml` | `Beacon-Linux-0.8.0.tar.gz` |
+| Android | Java/Android Gradle, `.github/workflows/android.yml` | Android v0.7.x debug APK |
+
+### Windows developer build
+
+With Go 1.23+, MinGW-w64 GCC and the Fyne graphics prerequisites installed:
 
 ```powershell
-py -3 -m pip install -r clients/desktop/requirements-windows.txt
-py -3 -m PyInstaller --noconfirm --clean --onefile --windowed --name Beacon --collect-all pystray --collect-all winotify clients/desktop/beacon_desktop.py
+cd clients/desktop-go
+go mod tidy
+go test ./internal/beacon
+go build -trimpath -ldflags="-s -w -H=windowsgui" -o Beacon.exe ./cmd/beacon
 ```
 
-Local output: `dist/Beacon.exe`. The GitHub Actions Windows workflow labels its successful artifact `Beacon-Windows-0.7.0.exe`.
+For a Windows user, the resulting EXE is run by double-clicking it. The OS may show an unsigned-executable reputation prompt until signing is implemented.
 
-## Linux
+### Linux developer build
 
-Requirements: Linux desktop with display server, Python 3.12 with Tkinter, optional AppIndicator/X11 tray support, `clients/desktop/requirements-linux.txt`.
+With Go 1.23+, gcc, pkg-config, OpenGL/X11 development headers:
 
 ```bash
-python3 -m pip install -r clients/desktop/requirements-linux.txt
-python3 -m PyInstaller --clean --noconfirm --onefile --windowed --name beacon --collect-all pystray clients/desktop/beacon_desktop.py
+cd clients/desktop-go
+go mod tidy
+go test ./internal/beacon
+CGO_ENABLED=1 go build -trimpath -ldflags="-s -w" -o beacon ./cmd/beacon
 ```
 
-The GitHub Actions Linux workflow packages the binary with `beacon.desktop`, `beacon.svg`, `install.sh` and `uninstall.sh` as `Beacon-Linux-0.7.0.tar.gz`. Extract and run `./install.sh` inside the extracted directory; it installs to the current user's `~/.local/bin` and XDG applications directory without root access.
+CI bundles the binary with `clients/desktop/linux/install.sh`, `uninstall.sh`, `beacon.desktop` and `beacon.svg`. Extract the archive and run `./install.sh` as your normal user; no sudo required. The binary uses the OS's graphics stack; Linux graphics dependencies vary by distribution.
 
-## Android
+### Android developer build
 
-Requirements: Android Studio, JDK 17, Gradle 8.9, SDK platform 35.
+Open `clients/android` in Android Studio (JDK 17, Gradle 8.9, Android SDK 35). Android remains a native Java application by design, not an embedded Python or Go desktop GUI.
 
-Open `clients/android` in Android Studio and assemble a debug APK. The expected filename after successful build is `Beacon-Android-0.7.0-debug.apk`.
+## Verification and dependency locking
 
-## Verification
+Go direct dependencies are pinned in `clients/desktop-go/go.mod`. The build pipeline runs `go mod tidy` to resolve and generate checksums before building. **A committed Go module and workflow do not establish that an EXE or Linux binary has actually been produced.** Verify workflow steps, artifact sizes/checksums and launch behavior on target machines. Do not call the release production-ready while GitHub runners are unavailable.
 
-The source repository and CI workflow do **not** include verified binaries by themselves. Review Actions job status, runner-assigned steps and artifact files. The private GitHub repository has previously shown failed workflow runs before runner allocation. Follow [release checklist](RELEASE-CHECKLIST.md).
+Consult [Release Checklist](RELEASE-CHECKLIST.md).

@@ -20,7 +20,7 @@ Beacon is designed for a trusted LAN first, not unprotected public internet expo
 - **HTTP is not TLS.** Passwords and session tokens are exposed on unencrypted, untrusted networks.
 - There is no packaged certificate, automatic TLS deployment, federation, internet relay or full security audit.
 - IP-based login throttling is per-process and not durable across restarts; it should not be the only defense for public exposure.
-- Login session tokens remain valid until revoked or expired. Android stores them encrypted via the Android Keystore; browser tokens reside in sessionStorage; the Linux Tk desktop keeps tokens in memory; Windows can optionally store them protected by Windows DPAPI.
+- Login tokens remain valid until revoked or expired. Android uses Android Keystore; browser tokens use sessionStorage. The new Go desktop optionally stores bearer tokens through the operating system's native credential vault (Windows Credential Manager or Linux Secret Service); no plaintext file fallback is allowed. The legacy Python/Tk prototype is not distributed.
 - Android allows cleartext HTTP to support LAN IP installations. Use HTTPS when passing through any untrusted segment.
 - Android now offers opt-in best-effort foreground-service monitoring, but cannot guarantee notification delivery after force-stop, loss of LAN, or OS termination.
 - The current WebSocket connection registry is in-memory and assumes one process. Do not scale to multiple workers without a shared broker.
@@ -58,3 +58,9 @@ The dedicated Dokploy file defaults to publishing TCP 8765 on all host interface
 Windows can save a per-account token via Windows DPAPI. Linux can optionally save one through its desktop secret store/keyring, but **never** writes a plaintext token when no secret backend is available. Preference files contain only boolean notification settings. Android continues to store tokens with Android Keystore AES-GCM.
 
 The new message search endpoint is bearer-authenticated, restricts matches to messages sent or received by that account, validates the optional peer ID and escapes SQL LIKE pattern wildcards. Notifications may reveal message senders or content via OS lock-screen policy; users can mute contacts and configure notifications. None of this provides end-to-end encryption.
+
+## v0.8.0 Go desktop security
+
+The Go desktop application uses `github.com/zalando/go-keyring` to access Windows Credential Manager or Linux Secret Service for an **optional** remembered login. No bearer token is written to a plaintext JSON, preference file or executable. If the credential store is unavailable, users can still sign in, but must do so again when relaunching. Fyne preferences contain only non-secret presentation flags. Logout clears the current session server-side and clears the OS keyring item; normal application quit retains the encrypted login if users opted to remember it. A compromise of the logged-in OS user can still access decrypted credentials.
+
+The API client bounds responses, rejects unexpected HTTP redirect origins, validates base URLs, and authenticates each request with an Authorization header. Direct LAN HTTP is unencrypted; use HTTPS via Dokploy reverse proxy on untrusted networks. This does not provide E2EE. The Docker server remains single-process Python/FastAPI with durable SQLite storage.

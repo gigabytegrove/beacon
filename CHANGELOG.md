@@ -1,5 +1,19 @@
 # Beacon changelog
 
+## 0.8.0 — Go-native Windows/Linux clients; Python desktop retired from releases
+
+- Replaced the default desktop implementation with **one Go/Fyne source tree** for Windows and Linux. Installed users do not need Python/Tkinter/pip or a Go development toolchain.
+- Dedicated Go application with a classic AIM buddy roster, avatar photos, sign-on and unread notifications, group/alias management, multi-window IMs, typing, presence, history/search and account/device administration.
+- Added standard-library Go API transport with explicit input validation, bearer token protection, bounded HTTP responses, cross-origin redirect blocking, and direct HTTP unit/integration tests.
+- Optional OS credential-vault session restoration: Windows Credential Manager and Linux Secret Service, with no plaintext fallback.
+- Replaced PyInstaller workflows with native Go/Fyne builds producing a versioned Windows EXE and Linux binary archive; Linux XDG launcher and user installer preserved.
+- Retained old Python desktop source under `clients/desktop/` solely for reference; its release packaging is discontinued.
+- Android remains a native Java application; server remains Python/FastAPI deployed via Dokploy Compose.
+- Fixed server buddy roster serialization to include saved group, nickname and muted settings for **all** clients; server version updated to 0.8.0.
+- Updated repository/desktop/client parity/build/security/architecture documentation and version-contract tests.
+- **Build verification:** source commit does not establish that Windows/Linux executables have been successfully built and installed. Validate GitHub runners and native target devices before release.
+
+
 ## 0.7.0 — Three-platform parity and client hardening
 
 - Windows: native profile/status editor, signed-in device manager, per-chat search and saved alert preferences; continued Windows DPAPI session encryption, native toasts and tray behavior.

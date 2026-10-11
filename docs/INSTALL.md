@@ -97,3 +97,7 @@ curl -fsS http://127.0.0.1:8765/health
 Use the same server URL and user credentials on Windows and Android, with a separate device session for each installation. Windows packaging is described in [desktop README](../clients/desktop/README.md) and the [Windows Actions workflow](../.github/workflows/windows.yml). Android setup and optional background LAN monitoring are described in [Android README](../clients/android/README.md) and the [Android Actions workflow](../.github/workflows/android.yml).
 
 Windows' remembered-session option is encrypted using Windows DPAPI. Android uses Android Keystore. Both store tokens for their own device sessions; do not copy local token files between devices. Only accept a downloadable installer when its workflow actually builds and uploads it.
+
+## Supported desktop installation as of v0.8.0
+
+Do **not** ask desktop users to install Python, Tkinter, pip, Go or Fyne. The primary Windows/Linux client is compiled from Go/Fyne into native binaries by the corresponding GitHub Actions workflows. The Windows deliverable is a versioned EXE; Linux ships a tar.gz with binary and unprivileged install script. See [Go client](../clients/desktop-go/README.md). Android continues to use its independent Java APK. The Docker server still runs on Dokploy.

@@ -18,6 +18,10 @@ def test_documentation_and_platform_sources_exist():
         "clients/android/app/src/main/java/net/gigabytegrove/beacon/BeaconMonitorService.java",
         ".github/workflows/windows.yml", ".github/workflows/linux.yml",
         ".github/workflows/android.yml", "compose.dokploy.yaml",
+        "clients/desktop-go/go.mod", "clients/desktop-go/README.md",
+        "clients/desktop-go/cmd/beacon/main.go", "clients/desktop-go/cmd/beacon/chat.go",
+        "clients/desktop-go/cmd/beacon/dialogs.go", "clients/desktop-go/cmd/beacon/assets/icon.svg",
+        "clients/desktop-go/internal/beacon/api.go", "clients/desktop-go/internal/beacon/api_test.go",
     ):
         assert (ROOT / relative).is_file(), relative
 
@@ -27,10 +31,25 @@ def test_versions_and_server_registration():
     android = (ROOT / "clients/android/app/build.gradle").read_text()
     workflow = (ROOT / ".github/workflows/windows.yml").read_text()
     linux = (ROOT / ".github/workflows/linux.yml").read_text()
-    assert 'version="0.7.0"' in main
+    assert 'version="0.8.0"' in main
     assert "versionName '0.7.0'" in android
     assert "versionCode 7" in android
-    assert "Beacon-Windows-0.7.0.exe" in workflow
-    assert "Beacon-Linux-0.7.0.tar.gz" in linux
+    assert "Beacon-Windows-0.8.0.exe" in workflow
+    assert "Beacon-Linux-0.8.0.tar.gz" in linux
     assert '@app.get("/api/messages/search")' in main
     assert 'name: beacon-data' in (ROOT / "compose.dokploy.yaml").read_text()
+
+
+def test_go_desktop_is_primary_and_not_python_packaged():
+    desktop_module = (ROOT / "clients/desktop-go/go.mod").read_text()
+    assert "fyne.io/fyne/v2" in desktop_module
+    assert "github.com/zalando/go-keyring" in desktop_module
+    windows = (ROOT / ".github/workflows/windows.yml").read_text()
+    linux = (ROOT / ".github/workflows/linux.yml").read_text()
+    for workflow in (windows, linux):
+        assert "go build" in workflow
+        assert "clients/desktop-go" in workflow
+        assert "PyInstaller" not in workflow
+        assert "beacon_desktop.py" not in workflow
+    readme = (ROOT / "README.md").read_text()
+    assert "do **not** need Python" in readme
