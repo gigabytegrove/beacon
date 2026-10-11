@@ -10,12 +10,18 @@ android {
         applicationId 'net.gigabytegrove.beacon'
         minSdk 26
         targetSdk 35
-        versionCode 5
-        versionName '0.5.0'
+        versionCode 6
+        versionName '0.6.0'
     }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+android.applicationVariants.all { variant ->
+    variant.outputs.all { output ->
+        outputFileName = "Beacon-Android-" + android.defaultConfig.versionName + "-" + variant.buildType.name + ".apk"
     }
 }

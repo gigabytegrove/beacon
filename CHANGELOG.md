@@ -1,5 +1,17 @@
 # Beacon changelog
 
+## 0.6.0 — Windows and Android in tandem, Dokploy deployment
+
+- Windows: optional per-user DPAPI-encrypted remembered login and launch-time session validation; hide-to-tray, Open/Quit tray actions and native toast alerts (optional runtime packages).
+- Windows: PyInstaller workflow with a versioned executable name and CI artifact upload.
+- Android: opt-in `remoteMessaging` foreground service with visible ongoing notification, Stop action, persisted per-session event cursor, 7-second best-effort LAN checks, muted-buddy filtering and presence heartbeats.
+- Android: manifest permissions, Android 14+ required service type, Android versionCode 6 and versioned APK name.
+- Added `compose.dokploy.yaml` and a full Dokploy Git-source, environment, networking and volume deployment guide; no `/root/beacon` clone is required.
+- Added `GET /api/events/latest` to initialize Android's first background notification cursor without replaying old messages.
+- Expanded platform tests and project/installation/API/security/troubleshooting docs for both clients.
+- **Verification requirement:** do not represent source or workflows as built APK/EXE artifacts; validate on Windows and Android devices. Foreground services can still be stopped by Android.
+
+
 ## 0.5.0 — Native Android foundation, account security, documentation
 
 - Added a native Java/Android client with login, Keystore-encrypted session token, LAN server selection, buddy list, groups, photos, nicknames, status, chat, typing indicators, read synchronization, local foreground notices, group/buddy editing and account actions.

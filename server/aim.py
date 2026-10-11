@@ -308,6 +308,19 @@ async def mark_read(peer_id: int, data: ReadUpdate, request: Request):
     return {"ok":True,"through_id":last}
 
 
+@router.get("/events/latest")
+def latest_event(request: Request):
+    """Last persisted message visible to this user, for first-run device cursor seeding."""
+    m = core()
+    actor = m.current(request)
+    with m.connection() as db:
+        latest = db.execute(
+            "SELECT COALESCE(MAX(id),0) FROM messages WHERE sender_id=? OR recipient_id=?",
+            (actor["id"], actor["id"])
+        ).fetchone()[0]
+    return {"last_message_id": latest}
+
+
 @router.get("/events")
 def events(request: Request, after: int = 0, limit: int = 200):
     m = core()

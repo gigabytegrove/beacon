@@ -57,6 +57,7 @@ Presence expires without device heartbeats, and a contact can remain available w
 | GET | /api/conversations | All peers with unread counts |
 | POST | /api/conversations/{id}/read | `{"through_id":123}` marks received messages read up to the ID |
 | GET | /api/events?after=123&limit=200 | Ordered per-account message catch-up; up to 500 events |
+| GET | /api/events/latest | Current account's latest persisted visible message ID, for first-run notification cursor seeding |
 
 Messages are persisted **before** a WebSocket notification is sent. Use the message ID cursor to catch up after disconnection and deduplicate results. Read positions are shared across devices for the same account.
 
@@ -83,3 +84,9 @@ Text `ping` receives text `pong` and updates the session's presence heartbeat. S
 ## Errors and limits
 
 FastAPI returns standard HTTP error codes: 401 authentication, 403 permission, 404 unknown entity, 409 conflict, 422 validation and 429 login throttling. Maximum message length: 4,000 characters. Profile status: 140 characters. Minimum password length for new accounts and password changes: 12 characters. Session expiry: 30 days. Username format: 3–32 letters, digits, dot, underscore or dash.
+
+## Client behavior in v0.6.0
+
+No new Docker server API endpoints are required for this update. Windows tray mode polls the existing buddy and message APIs. The Android opt-in foreground monitoring service uses `GET /api/buddies`, `GET /api/events?after=ID` and `POST /api/presence`, keeping a local cursor for at-least-once fetch and deduplication. Server 401 responses stop Android background monitoring. The HTTP interface is unchanged for desktop and web clients.
+
+When first enabling Android background monitoring, the service requests `GET /api/events/latest` to seed its cursor before any notifications. Future checks use `/api/events?after=ID`; this avoids notifying the user about their entire existing conversation history. Both mobile and desktop clients use the same Docker-hosted API.

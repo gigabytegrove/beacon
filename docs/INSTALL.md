@@ -1,5 +1,7 @@
 # Install, upgrade, backup and restore
 
+**Using Dokploy?** Follow [DOKPLOY.md](DOKPLOY.md) first. Dokploy fetches the private GitHub repo and builds `./compose.dokploy.yaml`; there is no `/root/beacon` checkout. Shell commands in this standalone document are for installations outside Dokploy.
+
 ## Requirements
 
 A Linux Docker host, Docker Engine and Docker Compose v2. Beacon runs as a single container; the included Compose configuration publishes TCP port 8765 and stores SQLite data in a named volume.
@@ -89,3 +91,9 @@ curl -fsS http://127.0.0.1:8765/health
 ~~~
 
 `GET /health` checks that the HTTP app is responsive; it is not a complete database, login or messaging test. Validate account sign-in and a test conversation separately.
+
+## Windows and Android clients
+
+Use the same server URL and user credentials on Windows and Android, with a separate device session for each installation. Windows packaging is described in [desktop README](../clients/desktop/README.md) and the [Windows Actions workflow](../.github/workflows/windows.yml). Android setup and optional background LAN monitoring are described in [Android README](../clients/android/README.md) and the [Android Actions workflow](../.github/workflows/android.yml).
+
+Windows' remembered-session option is encrypted using Windows DPAPI. Android uses Android Keystore. Both store tokens for their own device sessions; do not copy local token files between devices. Only accept a downloadable installer when its workflow actually builds and uploads it.

@@ -1,4 +1,4 @@
-# Beacon Android — v0.5.0 source
+# Beacon Android — v0.6.0 source
 
 This is Beacon's **native Android application source**, not a browser wrapper or WebView. It shares the Docker server used by the Windows, Linux and browser clients.
 
@@ -18,7 +18,7 @@ cd clients/android
 gradle --no-daemon :app:assembleDebug
 ~~~
 
-The expected **output after a successful local build** is `app/build/outputs/apk/debug/app-debug.apk`. This repository does not currently include the generated Gradle wrapper JAR or a prebuilt APK. **A device install and Gradle build have not yet been verified in this environment.**
+The expected **output after a successful local build** is `app/build/outputs/apk/debug/Beacon-Android-0.6.0-debug.apk`. This repository does not currently include the generated Gradle wrapper JAR or a prebuilt APK. **A device install and Gradle build have not yet been verified in this environment.**
 
 ## Features implemented in source
 
@@ -35,7 +35,7 @@ The expected **output after a successful local build** is `app/build/outputs/apk
 
 ## Network and notification limitations
 
-**Foreground-only:** This initial Android client polls the server approximately every 3.5 seconds only while the Activity is visible. When the app is backgrounded or fully closed, it does **not** maintain a push connection, guarantee instant notifications or stay marked online. Missed messages remain on the Docker server and are fetched when the application resumes. Reliable background push without a mandatory external cloud service is a planned later phase; it needs an explicitly designed Android foreground-service/battery-management strategy.
+Without opting in, the Android client polls only while its Activity is visible. The new opt-in foreground service checks the LAN while in the background, but Android can still restrict or terminate it. Missed messages remain saved on the server.
 
 The Android manifest intentionally enables cleartext HTTP so a local server can be addressed by `http://192.168...`. This is not encrypted and should only be used on a trusted network. Use HTTPS behind a secure reverse proxy for untrusted links. The Android client never requires a third-party messaging or push service.
 
@@ -47,3 +47,17 @@ The Android manifest intentionally enables cleartext HTTP so a local server can 
 - `app/src/main/res/drawable/ic_beacon.xml`: vector launcher/notification icon.
 
 The release is designed for Android 8.0 (API 26) and later, targeting API 35. No audio/video or WebRTC functionality is included.
+
+## v0.6.0: Background LAN monitoring (opt-in)
+
+Open **Account → Turn on background notifications**. Android will show a confirmation, then start Beacon's foreground service with an ongoing **Beacon is listening on your LAN** notification and a **Stop** action. The service checks the Docker server approximately every seven seconds, uses a persisted per-session message ID cursor to catch up after brief disconnections, respects buddy mute preferences and refreshes your selected Online/Away/Busy presence. Disable it from **Account** or Stop, or sign out to end monitoring.
+
+This is best-effort—not guaranteed background push. Android can stop the foreground service, the device can leave the LAN or enter power-saving restrictions, and force-stopping the app ends delivery. The app does not silently relaunch from boot, and it does not use Firebase or an external push server. Android 13+ notification permission is required for message alerts.
+
+The Android manifest declares `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_REMOTE_MESSAGING` and `foregroundServiceType="remoteMessaging"`, following [Android's official type requirements](https://developer.android.com/about/versions/14/changes/fgs-types-required). Foreground services must generally be started from an eligible user-visible context; see [Android's start restrictions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start).
+
+Build with Android Studio, JDK 17, Gradle 8.9 and SDK 35. The GitHub Android workflow attempts to upload a versioned APK; no APK is considered available until that build actually succeeds.
+
+Source: `app/src/main/java/net/gigabytegrove/beacon/BeaconMonitorService.java`.
+
+**Server deployment:** Windows and Android share the Docker server managed via [Dokploy Compose](../../docs/DOKPLOY.md). The v0.6.0 Android foreground monitor requires `GET /api/events/latest`, so deploy v0.6.0 server first. Android APK builds are independent of the Dokploy server.

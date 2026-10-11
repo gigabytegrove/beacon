@@ -4,7 +4,7 @@
 
 The server runs as **one Docker container with a persistent SQLite volume**. Clients communicate through a JSON HTTP API and WebSocket events. No external hosted messaging service is needed.
 
-## Current version: 0.5.0 (development)
+## Current version: 0.6.0 (development)
 
 | Capability | Web | Windows/Linux desktop | Android |
 | --- | --- | --- | --- |
@@ -16,37 +16,29 @@ The server runs as **one Docker container with a persistent SQLite volume**. Cli
 | Typing indicator | WebSocket | HTTP polling | HTTP polling |
 | Online/away/busy status | Yes | Yes | Yes, while active |
 | Multi-device sessions and unread synchronization | Yes | Yes | Yes |
-| Sign-on and message alerts | Browser, permission-dependent | Tk window/bell while running | Local notices while app is foregrounded |
+| Sign-on and message alerts | Browser, permission-dependent | Windows OS toast or Tk alert while running in tray | Foreground notices and opt-in background LAN monitor |
 | Notifications while app is fully closed | No | No | **Not implemented** |
-| Installable distributables | Browser | Source-run only | Android Studio/Gradle build required |
+| Installable distributables | Browser | Windows EXE packaging workflow (requires successful CI) | Android APK packaging workflow (requires successful CI) |
 | WebRTC audio/video | Future | Future | Future |
 
-**Release confidence:** The server had a Python import syntax defect in v0.4.0; v0.5.0 includes the correction, migration/security tests, and CI checks. CI runners have previously failed before running any steps in this private repository; check the current Actions status and validate on a staging instance before production deployment. Android source has not yet been APK-build or device-validated in this environment.
+**Release confidence:** The server had a Python import syntax defect in v0.4.0; v0.5.0 includes the correction, migration/security tests, and CI checks. CI runners have previously failed before running any steps in this private repository; check the current Actions status and validate on a staging instance before production deployment. Windows EXE and Android APK builds require successful platform CI and real device testing.
 
-## Quick start
+## Deploy with Dokploy (recommended)
 
-1. Install Docker Engine and Docker Compose v2.
-2. Clone this repository and create your private environment file.
-3. Set a **unique** bootstrap password (at least 12 characters).
-4. Start the service:
+**Beacon is a Git-backed Dokploy Docker Compose service.** No `/root/beacon` checkout or manual `docker compose up` is necessary on your Docker host.
 
-~~~bash
-git clone https://github.com/gigabytegrove/beacon.git
-cd beacon
-cp .env.example .env
-nano .env
-docker compose up -d --build
-docker compose ps
-curl -fsS http://127.0.0.1:8765/health
-~~~
+In Dokploy choose **Create Service → Compose → Docker Compose** (not Stack), GitHub source `gigabytegrove/beacon`, branch `main`, **Compose Path `./compose.dokploy.yaml`**. Set `BEACON_ADMIN_PASSWORD` (unique, 12+ characters) in Dokploy's Environment tab, then **Deploy**.
 
-Open **http://YOUR-LAN-IP:8765**. Sign in with the username from `BEACON_ADMIN_USERNAME` (default `admin`) and your configured password. Create user accounts from the administrator interface, then add each other as buddies.
+The service is built from GitHub, uses external `dokploy-network` for optional Dokploy Domains, publishes configurable port 8765 on the host, and persists users and messages in named volume `beacon-data`. Set `BEACON_BIND_IP` to the host's LAN interface or firewall-restrict `0.0.0.0`. For reverse-proxy-only mode use `127.0.0.1` with a Dokploy Domain pointed to container port 8765. See [Dokploy deployment and troubleshooting](docs/DOKPLOY.md).
 
-Use HTTPS/WSS through a properly configured reverse proxy when the network is not fully trusted. **Plain HTTP does not encrypt passwords, tokens, or messages.** Never expose the prototype's HTTP port directly to the public internet.
+### Standalone Docker Compose (non-Dokploy)
+
+For standalone installations only, use `compose.yaml` from a local repository checkout; copy `.env.example` to `.env`, set a strong bootstrap password, and run `docker compose up -d --build`. **Do not use these standalone commands for Dokploy-managed deployments.**
 
 ## Documentation
 
-- [Server installation, upgrading and backups](docs/INSTALL.md)
+- [Dokploy deployment (primary)](docs/DOKPLOY.md)
+- [Standalone install, backup and restore](docs/INSTALL.md)
 - [Android application setup and limitations](clients/android/README.md)
 - [Windows/Linux desktop client](clients/desktop/README.md)
 - [Complete API and WebSocket protocol](docs/API.md)
@@ -58,6 +50,12 @@ Use HTTPS/WSS through a properly configured reverse proxy when the network is no
 
 ## Project boundaries
 
-Beacon is deliberately a personal, text-first instant messenger. It does **not** share Monita's notification-channel or automation architecture. Group messaging, files, WebRTC audio/video, native system-tray integration and true background Android delivery are future development areas, not claims about v0.5.0.
+Beacon is deliberately a personal, text-first instant messenger. It does **not** share Monita's notification-channel or automation architecture. Group messaging, files, WebRTC audio/video, Windows tray support and opt-in Android foreground monitoring are now implemented in source, but have not been verified on devices. Background delivery after Android force-stop or loss of LAN is not guaranteed.
 
 License: no license has been selected or granted in this repository; the private repository owner retains all applicable rights.
+
+## Paired Windows + Android release — v0.6.0
+
+Windows now has Windows-user-scoped DPAPI session restoration, optional tray operation, Windows toast integration, and a GitHub Actions workflow for a versioned `Beacon-Windows-0.6.0.exe`. Android now has an explicitly enabled `remoteMessaging` foreground service with an ongoing notification, Stop action, a persisted event cursor, and LAN message/presence polling. Android uses the same Docker account, sessions, buddies and messages as the desktop client. No cloud notification provider is required.
+
+The existence of the packaging workflows does **not** mean a verified EXE or APK is available. Check the individual Actions runs and artifacts. See [Windows build and tray documentation](clients/desktop/README.md) and [Android foreground-monitor documentation](clients/android/README.md).
