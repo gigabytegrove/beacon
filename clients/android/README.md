@@ -82,3 +82,10 @@ On a Windows build workstation with Android Studio/SDK 35, JDK 17+ and Gradle 8.
 ## Android build runner availability
 
 The Android workflow can now run on a dedicated Linux x64 self-hosted Actions worker with label `beacon-linux`, selected manually or via repository variable. It still performs the Java/Gradle/SDK 35 build and uploads the APK only when compilation succeeds. No APK has been validated solely because a self-hosted runner option exists. See [runner setup](../../docs/SELF-HOSTED-BUILD-RUNNERS.md).
+
+
+## Read receipts after message display
+
+The native Android foreground Activity now sends `/api/conversations/{peer_id}/read` only **after** `renderChat` has populated the active chat with downloaded messages. Downloading history or receiving a background notification alone must not mark a message read. The Activity remembers the latest requested read ID per conversation, suppressing duplicate requests and retrying after errors. The optional `BeaconMonitorService` remains notification-only and continues its own event cursor independently.
+
+This change is source-level; Android APK compilation and on-device validation remain mandatory. See [Multi-device Delivery](../../docs/MULTI-DEVICE-DELIVERY.md).

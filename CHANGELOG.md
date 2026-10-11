@@ -1,5 +1,15 @@
 # Beacon changelog
 
+## Client synchronization and multi-device read-state hardening
+
+- Added the native Go desktop's cursor-based `/api/events` transport: latest-ID baseline, bounded ordered catch-up, strict cursor validation and resumable delivery after transient failures.
+- Changed Windows/Linux AIM-style desktop notifications from unread-count-only polling to persisted per-session event discovery, with aggregation by buddy and support for mute/automatic IM windows.
+- Fixed Go and Android read receipts: only acknowledge incoming messages after the active conversation has rendered, not while background networking is still loading history.
+- Guarded against updating a closed Go conversation window and suppressed repeated Android read acknowledgements until new messages arrive or a request fails.
+- Added locally executed, passing Go race-detector coverage for cursor seeding, multi-page catch-up, duplicates, malformed cursor responses, cancellation, page budgets and transient HTTP errors.
+- Expanded documentation and acceptance checks for read state versus message delivery. GUI/Android APK build verification is still outstanding; no native release binaries are claimed from these tests.
+
+
 ## Build runner recovery — zero-step Actions failures
 
 - Added manual selection of trusted self-hosted build runners to all four Windows, Linux, Android, and server/Docker CI workflows, with exact per-OS runner labels.

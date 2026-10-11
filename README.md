@@ -78,3 +78,10 @@ For runner-startup troubleshooting, see the [GitHub Actions recovery guide](docs
 The Windows, Linux, Android and Python/Docker workflows now support **both** GitHub-hosted runners and trusted labeled self-hosted runners. Run **all four real test/build workflows** on properly provisioned machines, with the same checksum and artifact checks. Set `BEACON_USE_SELF_HOSTED_RUNNERS=true` as a GitHub Actions repository variable after registering the two isolated workers, or choose `self-hosted` under each manual workflow run. This does not mark an unbuilt client complete.
 
 The full prerequisites, GitHub registration steps, security warnings, runner labels, and verification criteria are in [Self-hosted Build Runners](docs/SELF-HOSTED-BUILD-RUNNERS.md). The default remains GitHub-hosted when the variable is unset.
+
+
+## Multi-device event delivery and read receipts
+
+The Go desktop now uses authenticated **message-event cursors** in addition to the AIM buddy list's presence/unread refresh. Messages are caught up in ID order after temporary disconnects, and notifications no longer depend solely on unread counters increasing. The implementation validates server cursor continuity, rejects duplicate events and bounds each catch-up cycle. The Windows/Linux chat and native Android foreground Activity now send read receipts **after messages are rendered**, instead of marking background fetches as read.
+
+The new Go event transport and tests have passed the local `go test -race` suite; this does **not** mean native GUI or APK binaries have been compiled. See the detailed [multi-device delivery and read-state guide](docs/MULTI-DEVICE-DELIVERY.md) and [build readiness](docs/BUILD-AND-TEST.md).

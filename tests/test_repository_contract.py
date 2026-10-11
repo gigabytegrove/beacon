@@ -23,6 +23,9 @@ def test_documentation_and_platform_sources_exist():
         "clients/desktop-go/cmd/beacon/main.go", "clients/desktop-go/cmd/beacon/chat.go",
         "clients/desktop-go/cmd/beacon/dialogs.go", "clients/desktop-go/cmd/beacon/assets/icon.svg",
         "clients/desktop-go/internal/beacon/api.go", "clients/desktop-go/internal/beacon/api_test.go",
+        "clients/desktop-go/internal/beacon/sync.go",
+        "clients/desktop-go/internal/beacon/sync_test.go",
+        "docs/MULTI-DEVICE-DELIVERY.md",
     ):
         assert (ROOT / relative).is_file(), relative
 
@@ -117,3 +120,19 @@ def test_all_four_real_build_workflows_support_runner_recovery():
     assert "retention-days: 7" in android
     assert "pytest -q" in ci and "docker build" in ci
     assert (ROOT / "docs/SELF-HOSTED-BUILD-RUNNERS.md").is_file()
+
+
+def test_multi_device_event_cursor_and_display_read_contract():
+    """Prevent regressions to unread-count-only notifications and premature read state."""
+    sync = (ROOT / "clients/desktop-go/internal/beacon/sync.go").read_text()
+    main = (ROOT / "clients/desktop-go/cmd/beacon/main.go").read_text()
+    chat = (ROOT / "clients/desktop-go/cmd/beacon/chat.go").read_text()
+    android = (ROOT / "clients/android/app/src/main/java/net/gigabytegrove/beacon/MainActivity.java").read_text()
+    for api in ("LatestEventID(", "EventBatch(", "CatchUp("):
+        assert api in sync
+    assert "cursor=next" in main
+    assert "notifyNewMessages(arrivals)" in main
+    assert "ch.lastRead=id" in chat
+    assert "MarkRead(requestCtx,ch.peer.ID,id)" in chat
+    assert "markRenderedConversationRead(snap.peer, snap.messages);" in android
+    assert "displayedReadCursors" in android
