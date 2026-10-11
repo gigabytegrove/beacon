@@ -119,7 +119,7 @@ async def lifespan(app):
             pass
 
 
-app = FastAPI(title="Beacon", version="0.4.0", lifespan=lifespan)
+app = FastAPI(title="Beacon", version="0.5.0", lifespan=lifespan)
 
 
 def auth_token(token):
@@ -152,6 +152,11 @@ class NewUser(BaseModel):
     username: str
     password: str = Field(min_length=12, max_length=256)
     display_name: str = Field(min_length=1, max_length=80)
+
+
+class ChangePassword(BaseModel):
+    current_password: str = Field(min_length=1, max_length=256)
+    new_password: str = Field(min_length=12, max_length=256)
 
 
 class NewMessage(BaseModel):
@@ -243,6 +248,45 @@ def create_user(data: NewUser, request: Request):
         except sqlite3.IntegrityError:
             raise HTTPException(409, "Username already exists")
     return {"id": result.lastrowid, "username": data.username}
+
+
+@app.post("/api/me/password")
+async def change_password(data: ChangePassword, request: Request):
+    actor = current(request)
+    if hmac.compare_digest(data.current_password, data.new_password):
+        raise HTTPException(422, "New password must be different")
+    with LOCK, connection() as db:
+        existing = db.execute(
+            "SELECT password_hash FROM users WHERE id=?", (actor["id"],)
+        ).fetchone()
+        if not existing or not verify_password(data.current_password, existing["password_hash"]):
+            raise HTTPException(403, "Incorrect current password")
+        db.execute("UPDATE users SET password_hash=? WHERE id=?",
+                   (password_hash(data.new_password), actor["id"]))
+        revoked = [row["id"] for row in db.execute(
+            "SELECT id FROM sessions WHERE user_id=? AND id<>?",
+            (actor["id"], actor["session_id"])
+        )]
+        db.execute("DELETE FROM sessions WHERE user_id=? AND id<>?",
+                   (actor["id"], actor["session_id"]))
+    for session_id in revoked:
+        await disconnect_session(session_id)
+    return {"ok": True, "other_sessions_revoked": len(revoked)}
+
+
+@app.post("/api/sessions/revoke-others")
+async def revoke_other_sessions(request: Request):
+    actor = current(request)
+    with LOCK, connection() as db:
+        revoked = [row["id"] for row in db.execute(
+            "SELECT id FROM sessions WHERE user_id=? AND id<>?",
+            (actor["id"], actor["session_id"])
+        )]
+        db.execute("DELETE FROM sessions WHERE user_id=? AND id<>?",
+                   (actor["id"], actor["session_id"]))
+    for session_id in revoked:
+        await disconnect_session(session_id)
+    return {"ok": True, "revoked": len(revoked)}
 
 
 @app.get("/api/sessions")
@@ -388,7 +432,7 @@ async def websocket(ws: WebSocket):
             await ws.close(code=1001)
         except RuntimeError:
             pass
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         pass
     finally:
         WS_SESSIONS.pop(ws, None)
@@ -396,6 +440,9 @@ async def websocket(ws: WebSocket):
             CHANNELS[user_id].discard(ws)
             if not any(sid == actor["session_id"] for sid in WS_SESSIONS.values()):
                 await aim.clear_presence(user_id, actor["session_id"])
-\nfrom .aim import router as aim_router\napp.include_router(aim_router)\n
+
+from .aim import router as aim_router
+app.include_router(aim_router)
+
 from .social import router as social_router
 app.include_router(social_router)
