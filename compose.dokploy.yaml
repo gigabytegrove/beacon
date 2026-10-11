@@ -1,0 +1,43 @@
+# Dokploy-managed Beacon — GitHub Docker Compose
+# Create a Dokploy COMPOSE service (not Docker Stack).
+# Source: gigabytegrove/beacon, branch main, Compose Path ./compose.dokploy.yaml
+services:
+  beacon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      # Bind to the host's LAN-facing interface only when possible.
+      # Use BEACON_BIND_IP=127.0.0.1 for reverse-proxy-only access.
+      - "${BEACON_BIND_IP:-0.0.0.0}:${BEACON_PORT:-8765}:8765"
+    environment:
+      BEACON_DB: /data/beacon.db
+      BEACON_ADMIN_USERNAME: ${BEACON_ADMIN_USERNAME:-admin}
+      BEACON_ADMIN_PASSWORD: ${BEACON_ADMIN_PASSWORD:?Set a strong BEACON_ADMIN_PASSWORD in Dokploy Environment}
+    volumes:
+      - beacon-data:/data
+    networks:
+      - dokploy-network
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  beacon-data:
+    # A stable name across Dokploy compose project redeploys.
+    # Do NOT share this name with a second Beacon installation.
+    name: beacon-data
+
+networks:
+  dokploy-network:
+    external: true

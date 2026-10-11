@@ -1,0 +1,39 @@
+name: Beacon Windows Client
+on:
+  push:
+    paths:
+      - 'clients/desktop/**'
+      - '.github/workflows/windows.yml'
+  pull_request:
+    paths:
+      - 'clients/desktop/**'
+      - '.github/workflows/windows.yml'
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install server tests and Windows client tooling
+        run: |
+          python -m pip install -r requirements-dev.txt
+          python -m pip install -r clients/desktop/requirements-windows.txt
+      - name: Compile Python
+        run: python -m compileall -q server clients/desktop tests
+      - name: Run integration tests
+        run: python -m pytest -q
+      - name: Build Windows executable
+        run: |
+          python -m PyInstaller --noconfirm --clean --onefile --windowed --name Beacon --collect-all pystray --collect-all winotify clients/desktop/beacon_desktop.py
+          Move-Item dist/Beacon.exe dist/Beacon-Windows-0.6.0.exe
+        shell: pwsh
+      - name: Windows executable hash
+        run: Get-FileHash dist/Beacon-Windows-0.6.0.exe -Algorithm SHA256
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: beacon-windows-0.6.0
+          path: dist/Beacon-Windows-0.6.0.exe
+          if-no-files-found: error

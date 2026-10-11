@@ -70,4 +70,46 @@ def test_post_aliases_for_mobile_transport():
             assert result["nickname"] == "Allie"
             assert result["group_name"] == "Friends"
             assert result["muted"] == 1
-            assert main.app.version == "0.5.0"
+            assert main.app.version == "0.6.0"
+
+
+def test_latest_event_cursor_scoped_to_current_account():
+    with tempfile.TemporaryDirectory() as tmp:
+        os.environ["BEACON_DB"] = tmp + "/beacon.sqlite3"
+        os.environ["BEACON_ADMIN_USERNAME"] = "admin"
+        os.environ["BEACON_ADMIN_PASSWORD"] = "original secure admin password"
+        import server.main as module
+        main = importlib.reload(module)
+        with TestClient(main.app) as c:
+            admin = c.post("/api/login", json={
+                "username": "admin", "password": "original secure admin password",
+                "device_name": "Admin"
+            }).json()
+            ah = {"Authorization": "Bearer " + admin["token"]}
+            assert c.get("/api/events/latest").status_code == 401
+            assert c.get("/api/events/latest",headers=ah).json() == {"last_message_id": 0}
+            alice = c.post("/api/admin/users",headers=ah,json={
+                "username":"alice","display_name":"Alice",
+                "password":"alice long secret password"
+            }).json()["id"]
+            bob = c.post("/api/admin/users",headers=ah,json={
+                "username":"bob","display_name":"Bob",
+                "password":"bob long secret password"
+            }).json()["id"]
+            alice_token = c.post("/api/login",json={
+                "username":"alice","password":"alice long secret password","device_name":"phone"
+            }).json()["token"]
+            bob_token = c.post("/api/login",json={
+                "username":"bob","password":"bob long secret password","device_name":"pc"
+            }).json()["token"]
+            bh = {"Authorization": "Bearer " + bob_token}
+            lh = {"Authorization": "Bearer " + alice_token}
+            assert c.post("/api/messages",headers=ah,json={
+                "recipient_id":alice,"body":"hello Alice"
+            }).status_code == 201
+            assert c.get("/api/events/latest",headers=lh).json()["last_message_id"] == 1
+            assert c.get("/api/events/latest",headers=bh).json()["last_message_id"] == 0
+            assert c.post("/api/messages",headers=lh,json={
+                "recipient_id":bob,"body":"hello Bob"
+            }).status_code == 201
+            assert c.get("/api/events/latest",headers=bh).json()["last_message_id"] == 2

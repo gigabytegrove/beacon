@@ -1,0 +1,5 @@
+# Windows desktop runtime and packaging dependencies
+Pillow==11.3.0
+pystray==0.19.5
+winotify==1.1.0
+pyinstaller>=6.14,<7

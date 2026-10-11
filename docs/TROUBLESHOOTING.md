@@ -1,5 +1,7 @@
 # Troubleshooting
 
+**Dokploy installations:** The absence of `/root/beacon` is expected; Dokploy fetches the Git repository itself. Use a Compose service with source `gigabytegrove/beacon`, branch `main`, Compose Path `./compose.dokploy.yaml`, admin password in the Environment tab, and inspect Dokploy's Deployments and Logs tabs. See [DOKPLOY.md](DOKPLOY.md).
+
 ## Server won't start
 
 Run `docker compose ps` and `docker compose logs --tail=200 beacon`. Confirm `.env` has a unique bootstrap password, the data volume is writable and the host port isn't used by another program.
@@ -33,3 +35,11 @@ Open `clients/android` as an Android Studio project, install Android SDK platfor
 ## Data recovery
 
 Use the database backup instructions in [INSTALL.md](INSTALL.md). Do not delete the named volume when attempting to fix application startup or while migrating versions.
+
+## Windows tray and toasts
+
+Install optional Windows dependencies with `py -3 -m pip install -r clients/desktop/requirements-windows.txt`. A tray icon is created after successful Windows login. If the tray is unavailable, closing the window quits as before. Windows notification policies can block OS toasts; Beacon uses a Tk fallback. A DPAPI session token cannot be copied to another Windows user profile. Sign in again if it cannot be decrypted.
+
+## Android background notification delays
+
+Enable **Account → Turn on background notifications** and look for the persistent Beacon listening notification. Grant Android 13+ notification permission. This monitoring is optional and depends on an active, permitted Android foreground service, a reachable LAN and device power-management policy. It is not available after a user force-stop, and it won't silently relaunch at boot. Tap Stop in the persistent notification to disable monitoring. Reopen Beacon to retrieve messages after a disconnected period.

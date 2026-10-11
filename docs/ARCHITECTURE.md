@@ -34,3 +34,15 @@ Online status is session-based, aggregated across devices. Active sessions must 
 ## Future extension points
 
 The existing API supports new native clients. WebRTC signaling can be added to the Docker server in a later release, with TURN as an optional connectivity component for NAT traversal. WebRTC and a managed background Android notification channel are **not present** in v0.5.0.
+
+## v0.6.0 Windows/Android device lifecycle
+
+Windows: optional user-bound DPAPI token storage for session restoration, native tray icon to keep the desktop client alive after closing the roster, background Tk polling and Windows OS toast notifications with fallback UI. These do not require a second server process or additional Docker containers.
+
+Android: an explicitly opted-in `remoteMessaging` foreground service shares the Android Keystore-protected session token; it shows an ongoing notification with Stop action. The service polls the Docker server for `/api/events` after a durable local cursor and sends presence updates using the currently selected status. It pauses or stops as Android demands. No Firebase push, OS bypass, hidden boot receiver, or second Docker container is used.
+
+Guaranteed immediate messages while force-stopped or disconnected cannot be promised by this LAN-only service.
+
+## Dokploy server deployment
+
+Dokploy's Git-backed **Docker Compose** service uses `./compose.dokploy.yaml` (branch `main`) to build one server container, attaches to external `dokploy-network` for proxy routing, and stores SQLite in stable Docker named volume `beacon-data`. No static `/root/beacon` directory is used. Standalone `compose.yaml` remains for non-Dokploy environments.

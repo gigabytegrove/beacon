@@ -13,6 +13,8 @@ import urllib.request
 from datetime import datetime
 from tkinter import messagebox, simpledialog, ttk
 
+from win_integration import clear_session, load_session, save_session, system_notice, tray_icon, is_windows
+
 try:
     from PIL import Image, ImageTk
 except ImportError:
@@ -134,9 +136,11 @@ class Beacon(tk.Tk):
         self.auto_open_im = True
         self.groups = []
         self.avatar_cache = {}
-        self.protocol("WM_DELETE_WINDOW", self.shutdown)
+        self.tray = None
+        self.protocol("WM_DELETE_WINDOW", self.close_window)
         self.login_view()
         self.after(100, self.drain)
+        self.restore_windows_session()
 
     def background(self, work, completed):
         generation = self.generation
@@ -186,6 +190,10 @@ class Beacon(tk.Tk):
         self.login_button.pack(fill="x", pady=8)
         self.error_label = ttk.Label(root, text="")
         self.error_label.pack()
+        self.remember_device = tk.BooleanVar(value=is_windows())
+        if is_windows():
+            ttk.Checkbutton(root, text="Keep me signed in on this Windows account",
+                            variable=self.remember_device).pack(anchor="w", pady=6)
 
     def login(self):
         server, username, password, device = [f.get().strip() for f in self.inputs]
@@ -207,8 +215,58 @@ class Beacon(tk.Tk):
                 self.error_label.configure(text=error)
             else:
                 self.me = result
+                if is_windows() and self.remember_device.get():
+                    if not save_session(self.api.base, self.api.token):
+                        messagebox.showwarning("Beacon", "Windows could not securely save this device session.")
+                else:
+                    clear_session()
                 self.roster_view()
+                self.ensure_tray()
         self.background(work, complete)
+
+    def restore_windows_session(self):
+        if not is_windows():
+            return
+        prior = load_session()
+        if not prior:
+            return
+        self.api.base = prior["server"]
+        self.api.token = prior["token"]
+        self.error_label.configure(text="Restoring protected Windows session…")
+        def finished(result, error):
+            if error:
+                self.api.token = None
+                clear_session()
+                self.error_label.configure(text="Please sign in again.")
+                return
+            self.me = result
+            self.roster_view()
+            self.ensure_tray()
+        self.background(lambda: self.api.call("/me"), finished)
+
+    def ensure_tray(self):
+        if not is_windows() or self.tray is not None:
+            return
+        def queue_gui(callback):
+            self.jobs.put((self.generation, lambda *_: callback(), None, None))
+        self.tray = tray_icon(
+            lambda: queue_gui(self.show_window),
+            lambda: queue_gui(self.shutdown)
+        )
+
+    def show_window(self):
+        self.deiconify()
+        self.lift()
+        try:
+            self.focus_force()
+        except tk.TclError:
+            pass
+
+    def close_window(self):
+        if self.tray is not None and self.api.token:
+            self.withdraw()
+        else:
+            self.shutdown()
 
     def roster_view(self):
         self.generation += 1
@@ -320,6 +378,15 @@ class Beacon(tk.Tk):
         menu.grab_release()
 
     def toast(self, text, sound=False):
+        if is_windows() and (self.state() == "withdrawn" or not self.focus_displayof()):
+            if system_notice("Beacon", text):
+                if sound and self.sound_alerts:
+                    try:
+                        import winsound
+                        winsound.MessageBeep()
+                    except (ImportError, RuntimeError):
+                        pass
+                return
         if sound and self.sound_alerts:
             try:
                 self.bell()
@@ -468,6 +535,7 @@ class Beacon(tk.Tk):
         self.background(work, complete)
 
     def logout(self):
+        clear_session()
         token, base = self.api.token, self.api.base
         self.api.token = None
         self.polling = False
@@ -489,8 +557,15 @@ class Beacon(tk.Tk):
 
     def shutdown(self):
         self.running = False
+        if self.tray is not None:
+            try:
+                self.tray.stop()
+            except Exception:
+                pass
+            self.tray = None
         token, base = self.api.token, self.api.base
         self.api.token = None
+        clear_session()
         if token:
             def logout_session():
                 api = API()

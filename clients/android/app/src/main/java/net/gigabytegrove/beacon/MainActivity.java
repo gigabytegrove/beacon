@@ -6,6 +6,7 @@ import android.app.AlertDialog;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -105,6 +106,7 @@ public final class MainActivity extends Activity {
                     token = null;
                     authenticated = false;
                     session.clear();
+                    stopMonitor();
                     loginScreen("Session expired. Please sign in again.");
                     return;
                 }
@@ -130,10 +132,13 @@ public final class MainActivity extends Activity {
             server = previous[0]; token = previous[1];
             async(() -> request("/me", "GET", null), (data, error) -> {
                 if (error != null) {
-                    session.clear(); token = null; loginScreen("Sign in to Beacon");
+                    session.clear(); token = null; stopMonitor(); loginScreen("Sign in to Beacon");
                 } else {
                     myUserId = ((JSONObject) data).optInt("id");
                     authenticated = true;
+                    currentStatus = getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
+                            .getString("status", "available");
+                    ensureMonitorIfEnabled();
                     rosterScreen();
                     restartTicker();
                 }
@@ -145,11 +150,15 @@ public final class MainActivity extends Activity {
     @Override protected void onResume() {
         super.onResume();
         foreground = true;
+        getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
+                .edit().putBoolean("activity_visible", true).apply();
         restartTicker();
     }
 
     @Override protected void onPause() {
         foreground = false;
+        getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
+                .edit().putBoolean("activity_visible", false).apply();
         handler.removeCallbacks(ticker);
         super.onPause();
     }
@@ -316,6 +325,8 @@ public final class MainActivity extends Activity {
                         token = data.optString("token");
                         myUserId = data.optJSONObject("user").optInt("id");
                         authenticated = true;
+                        currentStatus = "available";
+                        stopMonitor();
                         if (!session.save(server, token))
                             Toast.makeText(this, "Keystore unavailable; login is temporary", Toast.LENGTH_LONG).show();
                         password.setText("");
@@ -343,7 +354,11 @@ public final class MainActivity extends Activity {
         LinearLayout statusBar = new LinearLayout(this);
         statusBar.setOrientation(LinearLayout.HORIZONTAL);
         for (String status : new String[]{"available", "away", "busy"}) {
-            statusBar.addView(button(status, v -> { currentStatus = status; async(() ->
+            statusBar.addView(button(status, v -> {
+                currentStatus = status;
+                getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
+                    .edit().putString("status", status).apply();
+                async(() ->
                     request("/presence", "POST", makeBody("status", status)),
                     (value, error) -> { if (error != null) alert(error.getMessage()); }); }));
         }
@@ -623,7 +638,9 @@ public final class MainActivity extends Activity {
 
     private void accountMenu() {
         String[] options = {"Rename a group", "Delete a group", "Change password",
-                "Sign out other devices", "Sign out"};
+                "Sign out other devices", monitorEnabled()
+                    ? "Turn off background notifications" : "Turn on background notifications",
+                "Sign out"};
         new AlertDialog.Builder(this).setTitle("Account and groups")
                 .setItems(options, (dialog, which) -> {
                     if (which == 0 || which == 1) chooseGroup(which == 0);
@@ -635,7 +652,20 @@ public final class MainActivity extends Activity {
                             .setPositiveButton("Revoke", (d, w) ->
                                     update("/sessions/revoke-others", "POST", makeBody()))
                             .show();
-                    if (which == 4) logout();
+                    if (which == 4) {
+                        if (monitorEnabled()) {
+                            stopMonitor();
+                            Toast.makeText(this, "Background monitoring stopped", Toast.LENGTH_SHORT).show();
+                        } else {
+                            new AlertDialog.Builder(this)
+                                .setTitle("Keep Beacon listening?")
+                                .setMessage("Beacon will show an ongoing Android notification and check your LAN server while the app is in the background. This uses battery and can stop if Android restricts the service. No cloud push provider is used.")
+                                .setNegativeButton("Cancel", null)
+                                .setPositiveButton("Enable", (d,w) -> startMonitor())
+                                .show();
+                        }
+                    }
+                    if (which == 5) logout();
                 }).show();
     }
 
@@ -683,7 +713,41 @@ public final class MainActivity extends Activity {
         });
     }
 
+    private boolean monitorEnabled() {
+        return getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
+                .getBoolean("enabled", false);
+    }
+
+    private void startMonitor() {
+        if (!authenticated || session.load() == null) {
+            alert("Sign in and allow Beacon to remember your device before enabling background notifications.");
+            return;
+        }
+        getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
+                .edit().putBoolean("enabled", true).putString("status", currentStatus).apply();
+        Intent intent = new Intent(this, BeaconMonitorService.class)
+                .setAction(BeaconMonitorService.ACTION_START);
+        try {
+            if (Build.VERSION.SDK_INT >= 26) startForegroundService(intent);
+            else startService(intent);
+        } catch (RuntimeException failure) {
+            stopMonitor();
+            alert("Android prevented background monitoring: " + failure.getMessage());
+        }
+    }
+
+    private void ensureMonitorIfEnabled() {
+        if (monitorEnabled()) startMonitor();
+    }
+
+    private void stopMonitor() {
+        getSharedPreferences(BeaconMonitorService.PREFS, MODE_PRIVATE)
+                .edit().putBoolean("enabled", false).apply();
+        stopService(new Intent(this, BeaconMonitorService.class));
+    }
+
     private void logout() {
+        stopMonitor();
         String currentToken = token;
         if (currentToken == null) { session.clear(); loginScreen(""); return; }
         final String logoutServer = server;
