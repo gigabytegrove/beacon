@@ -72,3 +72,9 @@ A coordinated reliability pass targets early Windows/Linux/Android testing witho
 **Test confidence:** These changes are source-level and have automated tests committed, but GitHub-hosted Actions continues to fail before assigning runners. Keep the client packages and server release labeled *unverified* until the actual builds and tests execute.
 
 For runner-startup troubleshooting, see the [GitHub Actions recovery guide](docs/GITHUB-ACTIONS-RUNNER-RECOVERY.md).
+
+## Build runner recovery — no checks bypassed
+
+The Windows, Linux, Android and Python/Docker workflows now support **both** GitHub-hosted runners and trusted labeled self-hosted runners. Run **all four real test/build workflows** on properly provisioned machines, with the same checksum and artifact checks. Set `BEACON_USE_SELF_HOSTED_RUNNERS=true` as a GitHub Actions repository variable after registering the two isolated workers, or choose `self-hosted` under each manual workflow run. This does not mark an unbuilt client complete.
+
+The full prerequisites, GitHub registration steps, security warnings, runner labels, and verification criteria are in [Self-hosted Build Runners](docs/SELF-HOSTED-BUILD-RUNNERS.md). The default remains GitHub-hosted when the variable is unset.

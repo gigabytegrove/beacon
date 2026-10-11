@@ -67,3 +67,11 @@ Deploy the Docker server first through Dokploy's Git Compose service (`./compose
 The new `tests/test_connection_and_presence.py` exercises SQLite connection closure, rollback and multi-device buddy presence, including the batched query count. These are tests to run, **not** tests reported as passing. Use `python -m pytest -q` on a build workstation with the project requirements installed. The Go desktop's unauthorized-session recovery and scroll-preserving refresh also require actual Windows/Linux GUI testing. When GitHub jobs fail with no runner, use the documented manual build scripts; do not interpret no-step failures as successful builds.
 
 For step-by-step account/permission checks when GitHub never assigns a runner, use [GitHub Actions runner recovery](GITHUB-ACTIONS-RUNNER-RECOVERY.md). Zero-step failures do not establish a source-code build failure.
+
+## Self-hosted GitHub Actions (real CI, no skipped checks)
+
+The four workflows can run on the user's trusted build machines if hosted runners remain blocked. The workflow-dispatch form now offers `self-hosted`; after registering isolated Windows and Linux runners with labels `beacon-windows`/`beacon-linux`, the repository variable `BEACON_USE_SELF_HOSTED_RUNNERS=true` routes all push-triggered builds to them. They still execute the full Python, Go, Android and Docker builds and upload real binaries only on success.
+
+**Registration and execution instructions:** [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md). Use dedicated nonproduction build workstations, not the live Dokploy host. Running a build on a trusted runner is not a bypass; reporting success without it would be.
+
+Self-hosted CI only runs for trusted pushes and owner-triggered manual dispatches. Pull-request workflows intentionally remain GitHub-hosted for isolation. Result artifacts have seven-day GitHub Actions retention; this changes no test requirements.

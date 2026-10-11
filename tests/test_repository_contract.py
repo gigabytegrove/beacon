@@ -86,3 +86,34 @@ def test_connection_lifecycle_and_batched_presence_are_wired():
     assert "range(0, len(user_ids), 400)" in aim
     assert "reflect.DeepEqual" in desktop
     assert "errors.Is(err,beacon.ErrUnauthorized)" in desktop
+
+
+def test_all_four_real_build_workflows_support_runner_recovery():
+    """Self-hosted mode must run the exact same tests, binaries and artifacts."""
+    for filename in ("ci.yml", "windows.yml", "linux.yml", "android.yml"):
+        text = (ROOT / ".github/workflows" / filename).read_text(encoding="utf-8")
+        assert "workflow_dispatch:" in text, filename
+        assert "BEACON_USE_SELF_HOSTED_RUNNERS" in text, filename
+        assert "github-hosted" in text and "self-hosted" in text
+        assert "fromJSON(" in text, filename
+        assert "github.event_name != 'pull_request'" in text, filename
+        assert "permissions:" in text and "contents: read" in text
+        label = "beacon-windows" if filename == "windows.yml" else "beacon-linux"
+        assert label in text, filename
+    windows = (ROOT / ".github/workflows/windows.yml").read_text()
+    linux = (ROOT / ".github/workflows/linux.yml").read_text()
+    android = (ROOT / ".github/workflows/android.yml").read_text()
+    ci = (ROOT / ".github/workflows/ci.yml").read_text()
+    assert "build-desktop-windows.ps1" in windows
+    assert "Get-FileHash" in windows
+    assert "actions/upload-artifact@" in windows
+    assert "retention-days: 7" in windows
+    assert "build-desktop-linux.sh" in linux
+    assert "sha256sum -c" in linux
+    assert "actions/upload-artifact@" in linux
+    assert "retention-days: 7" in linux
+    assert ":app:assembleDebug" in android
+    assert "actions/upload-artifact@" in android
+    assert "retention-days: 7" in android
+    assert "pytest -q" in ci and "docker build" in ci
+    assert (ROOT / "docs/SELF-HOSTED-BUILD-RUNNERS.md").is_file()
