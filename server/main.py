@@ -222,7 +222,7 @@ def setup_status():
 
 @app.post("/api/setup", status_code=201)
 def first_run_setup(data: FirstRunAdmin, request: Request):
-    """Claim an empty installation using the code from private Dokploy logs.
+    """Claim an empty installation using the code from private container logs.
 
     A one-time claim always precedes normal login; setup never opens again once
     any account exists in the persistent database.
@@ -249,7 +249,7 @@ def first_run_setup(data: FirstRunAdmin, request: Request):
                 raise HTTPException(429, "Too many setup attempts; try again later")
             if not matches_setup_code(DB, data.setup_code):
                 attempts.append(now)
-                raise HTTPException(403, "Incorrect setup code. Check the Dokploy Beacon logs.")
+                raise HTTPException(403, "Incorrect setup code. Check the private Beacon container logs.")
             db.execute(
                 "INSERT INTO users(username,display_name,password_hash,is_admin,created_at) VALUES (?,?,?,?,?)",
                 (data.username, data.display_name.strip(), password_hash(data.password), 1, int(time.time())),
