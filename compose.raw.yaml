@@ -1,15 +1,31 @@
-# Paste into Dokploy Raw Compose. No local Dockerfile or GitHub token required
-# when https://github.com/gigabytegrove/beacon is publicly readable.
+# Beacon Messenger — Dokploy Docker Compose (public GitHub source)
+# Rebuild the existing service when updating; never delete the beacon-data volume.
 services:
   beacon:
     build: "https://github.com/gigabytegrove/beacon.git#main"
     restart: unless-stopped
     ports:
       - "8765:8765"
+    environment:
+      BEACON_DB: /data/beacon.db
     volumes:
       - beacon-data:/data
     networks:
       - dokploy-network
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 volumes:
   beacon-data:
