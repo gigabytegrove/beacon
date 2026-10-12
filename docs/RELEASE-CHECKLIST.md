@@ -2,12 +2,38 @@
 
 This is a **release acceptance gate**, not a statement that the checks passed.
 
+## Native GitHub server updater (0.9.0) acceptance gates
+
+These tests apply to **every** Docker-hosted Beacon server, regardless of
+its management UI. They are **not yet marked complete** by source checks.
+
+- [ ] Build the 0.9.0 image from a clean public GitHub checkout.
+- [ ] Run `bash scripts/verify-native-updater.sh`: launch through PID 1
+      supervisor and verify its isolated failed-release auto-rollback.
+- [ ] Verify existing users, login, messaging and WebSocket reconnect on
+      a server using an unchanged persistent volume.
+- [ ] Check GitHub from **Control Center → Updates** as an administrator;
+      ordinary members and unauthenticated clients cannot access updates.
+- [ ] Install a later application-code-only commit from the Beacon web UI
+      without using Docker, Portainer or Dokploy actions.
+- [ ] Verify the container ID and database volume remain unchanged, while
+      `/health` and the UI report the new commit SHA.
+- [ ] Restart that container and confirm the release remains active.
+- [ ] Corrupt a staged source file and verify checksum rejection.
+- [ ] Attempt an update changing `requirements.txt` and confirm a clean
+      refusal without modifying the running server.
+- [ ] Roll back to the previous code without losing a test account/message.
+- [ ] Validate memory/disk usage on a small mixed-workload Docker host.
+- [ ] Confirm no Docker socket mount, privileged user, sidecar, external
+      registry, platform API or GitHub Actions are required for code updates.
+
+
 ## Repository and docs
 - [ ] One coherent change set includes server, Windows, Linux, Android, CI and documentation.
 - [ ] README, changelog, CLIENT-PARITY, API, SECURITY, troubleshooting and platform READMEs agree with the actual implementation.
 - [ ] `compose.dokploy.yaml` builds and deploys via Git-backed Dokploy Compose without any manually cloned `/root/beacon`.
 - [ ] Document environment variables, ports, volume behavior, backup/restore and reverse-proxy WebSockets.
-- [ ] Server (v0.8.0) and Windows/Linux Go package names (v0.8.0) match; Android native Java release is tracked independently (v0.7.x until rebuilt).
+- [ ] Server release/version.txt and Dockerfile base version agree. Windows/Linux and Android client versions are tracked independently.
 
 ## Server and security
 - [ ] Python syntax checks and unit/integration tests pass.
