@@ -149,3 +149,5 @@ def test_go_native_primary_client_integrates_premium_brand():
     assert "No buddies to show" in main
     assert "layout.NewSpacer()" in chat
     assert "type beaconTheme struct" in brand
+    assert "container.NewGridWrap(" in brand
+    assert "dot.SetMinSize(" not in brand
