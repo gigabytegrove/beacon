@@ -150,23 +150,29 @@ For an empty `beacon-data` database, Beacon **does not require a preconfigured p
 
 **Important deployment prerequisite:** The supplied `compose.dokploy.yaml` must be used with a Git-sourced Dokploy Compose service. Pasting it into a *Raw Compose* editor produces `Dockerfile: no such file or directory` because raw mode does not check out the repository. See [the corrected Dokploy guide](docs/DOKPLOY.md).
 
-## Beacon server updates — Docker Compose + GHCR (development)
+## Beacon in-app server updater (0.8.5)
 
-The server's **Control Center → Updates** page is now backed by an admin-only
-Dokploy Compose redeploy endpoint. The server accepts Dokploy integration
-settings only through its container environment, never from the browser; the
-web UI displays installed version/revision and whether updating is configured.
-It uses the existing Dokploy deployment (no extra updater container and no
-Docker socket). This first pass requests a redeploy, but does not yet provide a
-registry-digest-based update-available indicator or full deployment progress.
+**Routine updates now belong in the Beacon web Control Center — no new
+Docker Compose blocks per release.** Once 0.8.5 or newer is running:
 
-A dedicated **[prebuilt-image Compose file](compose.image.yaml)** and
-**[local-only GHCR publisher](scripts/publish-server-image.sh)** are included.
-No GHCR image is considered published merely because these files exist.
-**Do not switch a running source-build service to the image Compose file until
-a tagged image is actually built, pushed and pull-verified.** Existing
-`compose.raw.yaml` / `compose.dokploy.yaml` setups remain supported, and the
-database continues to use the persistent `beacon-data` volume.
+1. Open **Control Center → Updates**.
+2. Connect the **existing Dokploy Compose service** once using its HTTPS
+   address, Compose ID, and API key. Beacon verifies and securely persists
+   the connection on its existing data volume (the API key is never returned
+   to the browser).
+3. On later releases, select **Build & deploy latest main**. Dokploy rebuilds
+   the already-configured public Git-source Compose deployment while preserving
+   the database volume.
 
-See the complete [one-time updater setup and migration guide](docs/SERVER-UPDATER.md)
-for credentials, images, rollback expectations and current limitations.
+This **does not require publishing a GHCR image** or giving Beacon Docker
+socket access. The optional [GHCR Compose](compose.image.yaml) remains an
+alternative, not a dependency; it must never be used until an actual image is
+published and tested.
+
+**One-time bootstrap:** An older running image cannot use the new updater
+until 0.8.5 is installed through the **existing** Dokploy deployment. If
+Dokploy already uses `#main`, that is one initial redeploy **without editing
+Compose**. If the deployment is pinned to an old recovery commit, update the
+pin once. Subsequent source releases use the in-app Update button.
+
+[Complete setup, security and recovery guide](docs/SERVER-UPDATER.md).
