@@ -155,7 +155,7 @@ async def lifespan(app):
             pass
 
 
-app = FastAPI(title="Beacon", version="0.8.2", lifespan=lifespan)
+app = FastAPI(title="Beacon", version=os.getenv("BEACON_VERSION", "0.8.2"), lifespan=lifespan)
 
 
 def auth_token(token):
