@@ -109,6 +109,13 @@ def test_invalid_url_and_failed_verification_never_replace_saved_key(monkeypatch
             assert response.status_code == 422, (url, response.text)
             assert file.read_text() == original
 
+        no_key_change = client.put("/api/admin/update/config", headers=auth, json={
+            **base, "url": "https://different-dokploy.example.test", "api_key": "",
+        })
+        assert no_key_change.status_code == 422
+        assert "new API key" in no_key_change.json()["detail"]
+        assert file.read_text() == original
+
         def reject(_):
             raise HTTPException(422, "Invalid Dokploy API key.")
         monkeypatch.setattr(updater, "_verify_dokploy", reject)
