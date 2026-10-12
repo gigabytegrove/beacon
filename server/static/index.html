@@ -651,7 +651,7 @@ function paintUpdateStatus(d){
  $("adminUpdateSource").textContent="github.com/"+d.repository+" · "+d.channel;
  $("adminUpdateDetail").textContent=available?.checked_at?
    "Last checked "+new Date(available.checked_at*1000).toLocaleString()+(available.message?" · "+available.message:""):"Use Check GitHub to compare versions.";
- $("adminUpdateState").textContent=(d.state||"idle").replaceAll("_"," ")+": "+(d.message||"Ready");
+ $("adminUpdateState").textContent=(d.state||"idle").replaceAll("_"," ")+": "+(d.message||"Ready")+(d.last_failure?" · Last automatic rollback: "+d.last_failure:"");
  $("adminUpdateNow").disabled=busy||Boolean(available&&available.revision===d.revision);
  $("adminUpdateNow").textContent=busy?"Installing…":available?.revision===d.revision?"Already up to date":"Download & install";
  $("adminUpdateRollback").disabled=busy||!d.can_rollback;
