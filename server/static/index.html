@@ -273,7 +273,42 @@ if(!token&&window.opener){try{token=window.opener.sessionStorage.getItem("beacon
 $("device").value=(navigator.platform||"Browser").slice(0,80);
 function toast(message){const el=document.createElement("div");el.className="toast";el.textContent=message;$("toasts").append(el);setTimeout(()=>el.remove(),5000);}
 function notify(title,body,kind="message"){tone(kind);toast(title+" — "+body);if("Notification" in window&&Notification.permission==="granted"&&document.hidden){try{new Notification(title,{body:body});}catch{}}}
-async function api(path,method="GET",body){const response=await fetch("/api"+path,{method:method,cache:"no-store",headers:{"Content-Type":"application/json",...(token?{"Authorization":"Bearer "+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});const data=await response.json().catch(()=>({}));if(!response.ok){if(response.status===401&&path!=="/login")localLogout();throw Error(typeof data.detail==="string"?data.detail:"Request failed");}return data;}
+function apiErrorMessage(status,detail,method,path){
+ if(Array.isArray(detail)&&detail.length){
+  const problem=detail[0], field=Array.isArray(problem.loc)?problem.loc.filter(x=>typeof x==="string"&&x!=="body").pop():null;
+  const name=({username:"Username",display_name:"Display name",password:"Password",server_name:"Server name",tagline:"Description"})[field]||field||"Input";
+  let msg=String(problem.msg||"Invalid value").replace(/^Value error,\s*/,"");
+  if(problem.type==="string_too_short")msg="must have at least "+(problem.ctx?.min_length??"the required number of")+" characters";
+  if(problem.type==="string_too_long")msg="exceeds the maximum "+(problem.ctx?.max_length??"allowed")+" characters";
+  if(problem.type==="string_pattern_mismatch")msg="may contain only letters, numbers, dots, dashes and underscores";
+  if(problem.type==="missing")msg="is required";
+  return name+": "+msg;
+ }
+ if(typeof detail==="string"&&detail.trim())return detail;
+ if(status===401)return "Your sign-in session expired. Please sign in again.";
+ if(status===403)return "Your account does not have permission for this action.";
+ if(status===404)return "This operation isn't supported by the currently deployed Beacon server (HTTP 404).";
+ if(status===409)return "An account with that username already exists.";
+ if(status===422)return "Please check your entries and try again.";
+ if(status===429)return "Too many requests. Please try again shortly.";
+ if(status>=500)return "Beacon returned HTTP "+status+" for "+method+" /api"+path+". Check the server logs.";
+ return "Request failed (HTTP "+status+").";
+}
+async function api(path,method="GET",body){
+ let response;
+ try{
+  response=await fetch("/api"+path,{method,cache:"no-store",headers:{"Content-Type":"application/json",...(token?{"Authorization":"Bearer "+token}:{})},body:body===undefined?undefined:JSON.stringify(body)});
+ }catch{throw Error("Cannot reach Beacon. Check your connection and the server's health.");}
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok){
+  const error=new Error(apiErrorMessage(response.status,data.detail,method,path));
+  error.status=response.status;
+  error.field=Array.isArray(data.detail)?data.detail[0]?.loc?.at(-1):null;
+  if(response.status===401&&path!=="/login")localLogout();
+  throw error;
+ }
+ return data;
+}
 function localLogout(){token=null;me=null;sessionStorage.removeItem("beacon_token");clearInterval(pulse);clearInterval(rosterTimer);clearTimeout(reconnectTimer);if(socket){socket.onclose=null;socket.close();socket=null;}$("roster").classList.add("hidden");$("chat").classList.add("hidden");$("admin").classList.add("hidden");$("login").classList.remove("hidden");}
 function avatar(target,person){target.replaceChildren();target.className="avatar"+(target.id==="ownAvatar"?" large":"");if(person?.avatar?.startsWith("data:image/")){const img=document.createElement("img");img.src=person.avatar;img.alt="";img.style.cssText="width:100%;height:100%;border-radius:inherit;object-fit:cover";target.append(img);}else target.textContent=(person?.display_name||"?")[0].toUpperCase();}
 function buddyRow(p){const button=document.createElement("div");button.className="buddy";button.role="button";button.tabIndex=0;button.title="Open a conversation with "+p.display_name;const av=document.createElement("div");avatar(av,p);const dot=document.createElement("span");dot.className="online-dot "+p.presence;const details=document.createElement("span");details.className="buddy-copy";const name=document.createElement("strong");name.textContent=displayName(p);const line=document.createElement("small");line.textContent=p.presence==="offline"?"Offline":p.presence==="available"?(p.status_text||"Online"):p.presence+(p.status_text?" · "+p.status_text:"");details.append(name,line);button.append(av,dot,details);if(p.muted){const muted=document.createElement("span");muted.className="muted-indicator";muted.textContent="🔕";button.append(muted);}if(p.unread_count){const c=document.createElement("span");c.className="counter";c.textContent=p.unread_count;button.append(c);}const menu=document.createElement("button");menu.className="buddy-edit";menu.textContent="⋯";menu.title="Edit buddy settings";menu.onclick=e=>{e.preventDefault();e.stopPropagation();editBuddy(p);};button.append(menu);button.onclick=()=>openChat(p.id);button.onkeydown=e=>{if(e.target===button&&(e.key==="Enter"||e.key===" ")){e.preventDefault();openChat(p.id);}};return button;}
@@ -326,8 +361,60 @@ $("confirmAdd").onclick=async()=>{const id=Number($("directory").value);if(!id)r
 $("editProfile").onclick=()=>{$("profileName").value=me.display_name;$("profileStatus").value=$("ownStatus").textContent==="On your network"?"":$("ownStatus").textContent;$("profileDialog").showModal();};
 $("saveProfile").onclick=async()=>{try{await api("/me/profile","PUT",{display_name:$("profileName").value,status_text:$("profileStatus").value});const f=$("profilePhoto").files[0];if(f){if(!["image/png","image/jpeg","image/webp"].includes(f.type))throw Error("Choose PNG, JPEG or WebP");const picture=await createPhoto(f);await api("/me/avatar","POST",{image_base64:picture.base64,mime_type:picture.mime});}const result=await api("/me");me=result;$("ownName").textContent=$("profileName").value;$("ownStatus").textContent=$("profileStatus").value||"On your network";$("profileDialog").close();await loadDirectory();const people=await api("/users");avatar($("ownAvatar"),people.find(p=>p.id===me.id));}catch(err){toast(err.message);}};
 async function createPhoto(file){const src=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(Error("Cannot read photo"));reader.readAsDataURL(file);});const pic=new Image();await new Promise((resolve,reject)=>{pic.onload=resolve;pic.onerror=()=>reject(Error("Cannot decode photo"));pic.src=src;});const canvas=document.createElement("canvas");canvas.width=160;canvas.height=160;const ctx=canvas.getContext("2d");const s=Math.min(pic.width,pic.height);ctx.drawImage(pic,(pic.width-s)/2,(pic.height-s)/2,s,s,0,0,160,160);const data=canvas.toDataURL("image/jpeg",.82);return{mime:"image/jpeg",base64:data.split(",")[1]};}
-$("newUser").onclick=()=>$("userDialog").showModal();
-$("saveUser").onclick=async()=>{try{await api("/admin/users","POST",{username:$("newUsername").value,display_name:$("newDisplay").value,password:$("newPassword").value});$("userDialog").close();await loadDirectory();toast("Account created");}catch(err){toast(err.message);}};
+function openCreateUser(){
+ $("createUserForm").reset();
+ $("newPassword").type="password";$("newPasswordConfirm").type="password";
+ $("toggleNewPassword").textContent="Show passwords";$("toggleNewPassword").setAttribute("aria-pressed","false");
+ $("newPasswordConfirm").setCustomValidity("");$("newDisplay").setCustomValidity("");
+ $("createUserError").textContent="";$("userDialog").showModal();$("newUsername").focus();
+}
+$("newUser").onclick=openCreateUser;
+$("cancelUser").onclick=()=>$("userDialog").close();
+$("toggleNewPassword").onclick=()=>{
+ const show=$("newPassword").type==="password";
+ for(const id of ["newPassword","newPasswordConfirm"])$(id).type=show?"text":"password";
+ $("toggleNewPassword").textContent=show?"Hide passwords":"Show passwords";
+ $("toggleNewPassword").setAttribute("aria-pressed",String(show));
+};
+for(const id of ["newUsername","newDisplay","newPassword","newPasswordConfirm"]){
+ $(id).addEventListener("input",()=>{
+  $("createUserError").textContent="";
+  $("newPasswordConfirm").setCustomValidity("");
+  $("newDisplay").setCustomValidity("");
+ });
+}
+$("createUserForm").onsubmit=async e=>{
+ e.preventDefault();
+ const form=$("createUserForm"),button=$("saveUser");
+ const username=$("newUsername").value.trim(),display_name=$("newDisplay").value.trim(),password=$("newPassword").value;
+ const confirmPassword=$("newPasswordConfirm");
+ $("createUserError").textContent="";
+ if(!display_name){
+  $("newDisplay").setCustomValidity("Enter a display name.");$("newDisplay").reportValidity();return;
+ }
+ if(password!==confirmPassword.value){
+  confirmPassword.setCustomValidity("Passwords do not match.");
+  $("createUserError").textContent="The passwords don't match. Check the confirmation.";
+  confirmPassword.reportValidity();return;
+ }
+ if(!form.checkValidity()){form.reportValidity();return;}
+ button.disabled=true;button.textContent="Creating account…";
+ try{
+  const user=await api("/admin/users","POST",{username,display_name,password});
+  $("userDialog").close();form.reset();
+  toast("Account created: "+(user.display_name||display_name),"success");
+  if(!$("admin").classList.contains("hidden")){
+   try{await adminTab("users");}catch(err){toast("Account created, but accounts couldn't refresh: "+err.message,"error");}
+  }else{
+   try{await loadDirectory();}catch(err){toast("Account created, but contacts couldn't refresh: "+err.message,"error");}
+  }
+ }catch(err){
+  $("createUserError").textContent=err.message;
+  if(err.field==="username"||err.status===409)$("newUsername").focus();
+  else if(err.field==="password")$("newPassword").focus();
+  else if(err.field==="display_name")$("newDisplay").focus();
+ }finally{button.disabled=false;button.textContent="Create account";}
+};
 $("devices").onclick=async()=>{try{const all=await api("/sessions");const root=$("sessionList");root.replaceChildren();for(const s of all){const line=document.createElement("p");line.textContent=s.device_name+(s.current?" · this window":"")+" ";const button=document.createElement("button");button.textContent="Revoke";button.onclick=async()=>{await api("/sessions/"+s.id,"DELETE");$("deviceDialog").close();if(s.current)localLogout();};line.append(button);root.append(line);}$("deviceDialog").showModal();}catch(err){toast(err.message);}};
 $("enableAlerts").onclick=async()=>{if("Notification" in window){const result=await Notification.requestPermission();toast(result==="granted"?"Notifications enabled":"Notifications unavailable or denied");}else toast("Browser notifications not supported here");};
 document.querySelectorAll("[data-close]").forEach(button=>button.onclick=()=>$(button.dataset.close).close());
