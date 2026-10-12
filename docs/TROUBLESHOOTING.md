@@ -2,6 +2,8 @@
 
 **Desktop update (v0.8.0):** Windows and Linux use the new **Go/Fyne** client under `clients/desktop-go`. Old Python/Tkinter startup commands, PyInstaller errors, and the `clients/desktop/requirements-*.txt` are legacy reference material, **not** installation requirements for end users. See [Go Desktop Client](../clients/desktop-go/README.md).
 
+**Dokploy Raw Compose:** Use `build: "https://github.com/gigabytegrove/beacon.git#main"`, not `build: .`; the former lets Docker download the public repository's Dockerfile directly. No Actions or registry image is involved. Ensure the GitHub repo is anonymously accessible from your host.
+
 **Dokploy installations:** The absence of `/root/beacon` is expected; Dokploy fetches the Git repository itself. Use a Compose service with source `gigabytegrove/beacon`, branch `main`, Compose Path `./compose.dokploy.yaml`, admin password in the Environment tab, and inspect Dokploy's Deployments and Logs tabs. See [DOKPLOY.md](DOKPLOY.md).
 
 ## Server won't start

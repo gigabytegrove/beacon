@@ -1,0 +1,20 @@
+# Paste into Dokploy Raw Compose. No local Dockerfile or GitHub token required
+# when https://github.com/gigabytegrove/beacon is publicly readable.
+services:
+  beacon:
+    build: "https://github.com/gigabytegrove/beacon.git#main"
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - beacon-data:/data
+    networks:
+      - dokploy-network
+
+volumes:
+  beacon-data:
+    name: beacon-data
+
+networks:
+  dokploy-network:
+    external: true

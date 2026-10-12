@@ -1,8 +1,34 @@
 # Deploy Beacon with Dokploy (recommended)
 
-## Important: select Git source, NOT Raw Compose
+## Standard Raw Docker Compose (public repository)
 
-The error `failed to read dockerfile: open Dockerfile: no such file or directory` means Dokploy used **Source Type: docker raw**, which creates only the Compose YAML and does not check out the Beacon repository. With `build.context: .`, Docker cannot see the Dockerfile. Switch the Dokploy Compose service **Source** to **Git/GitHub** and connect the private `gigabytegrove/beacon` repository, branch `main`, Compose Path `./compose.dokploy.yaml`. If the service cannot change source type, create a replacement Git-sourced Compose service and retain the existing `beacon-data` volume. The Compose server builds on Dokploy; GitHub Actions is **not used**.
+Beacon also supports **Dokploy Raw Compose**, with no prepublished image and no local Dockerfile. Use the root [compose.raw.yaml](../compose.raw.yaml), or paste this minimal Compose into Dokploy:
+
+```yaml
+services:
+  beacon:
+    build: "https://github.com/gigabytegrove/beacon.git#main"
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - beacon-data:/data
+    networks:
+      - dokploy-network
+volumes:
+  beacon-data:
+    name: beacon-data
+networks:
+  dokploy-network:
+    external: true
+```
+
+Docker Compose fetches the public repository and its Dockerfile at build time using a remote Git build context. The repository must actually be anonymously readable from the Dokploy host. **No GitHub credential, token, or GitHub Actions is required.** This fixes the Raw Compose `open Dockerfile: no such file or directory` failure caused by `build: .`. Continue setup using the one-time code from private Beacon container logs; the `beacon-data` volume must be retained.
+
+
+## Alternative: Git-sourced Compose (not required)
+
+Earlier Raw Compose deployments failed because they used `build: .`, which requires a local Dockerfile. Use the remote Git build context in `compose.raw.yaml` instead. Git-sourced Dokploy Compose also remains available, but is not required. No GitHub Actions are used.
 
 ## First-run administrator wizard
 
@@ -53,7 +79,7 @@ A restored database must be placed into the **same** persistent volume. Avoid de
 
 ## If deployment fails
 
-- **`Dockerfile` missing / Raw Compose:** Switch Dokploy Source to **Git**, not Raw. The raw Compose editor does not fetch the private Dockerfile.
+- **`Dockerfile` missing / Raw Compose:** Change `build: .` to `build: "https://github.com/gigabytegrove/beacon.git#main"`. Docker then fetches the Dockerfile through its remote Git build context. If it fails to fetch, verify anonymous repository access and network/DNS from the Docker host.
 - **Git access denied:** Check Dokploy's GitHub source connection has access to the private repository.
 - **Compose file not found:** The Compose Path must be **`./compose.dokploy.yaml`**, not a server directory like `/root/beacon`.
 - **First-run wizard missing:** Check `/api/setup/status`, confirm the updated image is running, and check the private Beacon logs for the setup code. A missing `BEACON_ADMIN_PASSWORD` is normal.

@@ -22,7 +22,34 @@ The Go desktop code includes authenticated sign-in, independent device sessions,
 
 ## Deploy the server with Dokploy
 
-This is the required server deployment method. In Dokploy create **Compose → Docker Compose** (not Stack), connect private GitHub repository `gigabytegrove/beacon`, branch `main`, with **Compose Path `./compose.dokploy.yaml`**. Use a **Git source, not Raw Compose** (raw mode does not check out the Dockerfile). No admin password environment variable is required: click **Deploy**, find the one-time **SETUP CODE** in Beacon's private Dokploy logs, and complete the administrator creation wizard at the Beacon URL. The service uses external `dokploy-network` and stable persistent named volume `beacon-data`; the container listens on port 8765.
+## Standard Raw Docker Compose (public repository)
+
+Beacon also supports **Dokploy Raw Compose**, with no prepublished image and no local Dockerfile. Use the root [compose.raw.yaml](compose.raw.yaml), or paste this minimal Compose into Dokploy:
+
+```yaml
+services:
+  beacon:
+    build: "https://github.com/gigabytegrove/beacon.git#main"
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - beacon-data:/data
+    networks:
+      - dokploy-network
+volumes:
+  beacon-data:
+    name: beacon-data
+networks:
+  dokploy-network:
+    external: true
+```
+
+Docker Compose fetches the public repository and its Dockerfile at build time using a remote Git build context. The repository must actually be anonymously readable from the Dokploy host. **No GitHub credential, token, or GitHub Actions is required.** This fixes the Raw Compose `open Dockerfile: no such file or directory` failure caused by `build: .`. Continue setup using the one-time code from private Beacon container logs; the `beacon-data` volume must be retained.
+
+
+
+This is the required server deployment method. In Dokploy create **Compose → Docker Compose** (not Stack), connect private GitHub repository `gigabytegrove/beacon`, branch `main`, with **Compose Path `./compose.dokploy.yaml`**. Raw Compose is supported using `build: "https://github.com/gigabytegrove/beacon.git#main"`; Docker fetches the public repository and Dockerfile at build time. A Git-sourced Compose service also works. No admin password environment variable is required: click **Deploy**, find the one-time **SETUP CODE** in Beacon's private Dokploy logs, and complete the administrator creation wizard at the Beacon URL. The service uses external `dokploy-network` and stable persistent named volume `beacon-data`; the container listens on port 8765.
 
 **Do not try to clone the repository into `/root/beacon` or run shell Compose commands on the Dokploy server.** Update the Compose service by redeploying GitHub `main` from the Dokploy UI. Back up the data volume first. Restrict the LAN port with firewall rules or configure HTTPS through a Dokploy Domain. See [Dokploy Guide](docs/DOKPLOY.md).
 
