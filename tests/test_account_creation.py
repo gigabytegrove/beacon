@@ -103,6 +103,14 @@ def test_management_page_exposes_real_validated_form_and_clear_errors(monkeypatc
         assert 'id="adminUsersCount"' in html
         assert 'id="adminRefreshUsers"' in html
         assert 'id="adminResetError"' in html
+        assert 'id="adminBuildBadge"' in html
+        assert 'id="adminUpdateCheck"' in html
+        assert "refreshBuildBadge()" in html
+        health = client.get("/health")
+        assert health.status_code == 200
+        assert health.json()["status"] == "ok"
+        assert health.json()["version"] == "0.9.1"
+        assert len(health.json()["ui_sha256"]) == 16
         assert 'apiErrorMessage(' in html
         assert 'Array.isArray(detail)' in html
         assert '$("createUserForm").onsubmit=' in html
