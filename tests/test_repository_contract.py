@@ -33,7 +33,7 @@ def test_documentation_and_platform_sources_exist():
 def test_versions_and_server_registration():
     server = (ROOT / "server/main.py").read_text()
     android = (ROOT / "clients/android/app/build.gradle").read_text()
-    assert 'version="0.8.2"' in server
+    assert 'os.getenv("BEACON_RUNTIME_VERSION", os.getenv("BEACON_VERSION", "0.9.0"))' in server
     assert "versionName '0.8.0'" in android
     assert "versionCode 8" in android
     assert '@app.get("/api/messages/search")' in server
@@ -41,8 +41,8 @@ def test_versions_and_server_registration():
     assert '@app.post("/api/setup", status_code=201)' in server
     compose = (ROOT / "compose.dokploy.yaml").read_text()
     assert 'name: beacon-data' in compose
-    assert 'BEACON_ADMIN_PASSWORD: ${BEACON_ADMIN_PASSWORD:-}' in compose
-    assert 'build:' in compose and 'dockerfile: Dockerfile' in compose
+    assert 'beacon-data:/data' in compose
+    assert 'build:' in compose and 'github.com/gigabytegrove/beacon.git#main' in compose
 
 
 def test_primary_go_desktop_and_manual_builds_not_github_actions():
