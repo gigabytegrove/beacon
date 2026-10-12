@@ -65,6 +65,8 @@ def test_dokploy_redeploy_authentication_cooldown_and_volume_safety(monkeypatch,
 
     class Response:
         status = 200
+        def read(self, size=1048576):
+            return b"{}"
 
     class Opener:
         def open(self, req, timeout):
