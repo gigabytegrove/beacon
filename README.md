@@ -2,11 +2,11 @@
 
 **Your people. Your network.** Beacon is a LAN-first, self-hosted instant messenger inspired by classic AOL Instant Messenger: compact buddy list, profile photos, online/away/busy status, sign-on notices, typing indicators and separate conversation windows. **Beacon is independent of Monita.**
 
-## Current development release: 0.8.0 — Native Go desktop migration
+## Current server development release: 0.9.0 — Native GitHub updater
 
 **Windows and Linux use a shared Go/Fyne source code**, built as native executables. Users do **not** need Python, pip, a Go SDK, or to install Fyne in order to run a successfully built desktop client. The legacy Python/Tkinter prototype is retained temporarily under `clients/desktop/` for reference **only**; it is not the default client, not the release build and not required on user machines.
 
-**Android remains a native Java/Android application**, which installs as an APK. The shared messaging **server remains Python/FastAPI in one Docker container**, deployed through Dokploy. Converting the server to Go is outside this client migration.
+**Android remains a native Java/Android application**, which installs as an APK. The shared messaging **server remains Python/FastAPI in one Docker container** and supports ordinary Docker Engine, Docker Compose and container management interfaces. Converting the server to Go is outside this client migration.
 
 | Platform | Primary implementation | Distribution target |
 | --- | --- | --- |
@@ -14,17 +14,17 @@
 | Linux | **Same Go/Fyne code** | `Beacon-Linux-0.8.0.tar.gz` including binary and desktop entry |
 | Android | Native Android Java | Android 0.7.x debug APK workflow |
 | Web | HTML/CSS/JavaScript | Served by the Docker server |
-| Server | Python/FastAPI/SQLite | **GitHub-backed Dokploy Docker Compose** |
+| Server | Python/FastAPI/SQLite | **Docker/Compose with native GitHub code updates** |
 
 The Go desktop code includes authenticated sign-in, independent device sessions, secure *optional* saved login through OS credential vaults, buddy groups and aliases, presence, contact avatars, pop-out individual conversations, unread counts, typing indicators, sign-on/message notifications, buddy management, profile/photo/password changes, device revocation and message-history search. Fyne provides platform-native-style widgets, multiple windows and system tray support.
 
 **Verification:** Source code and local build scripts are committed. GitHub Actions workflows were removed at the owner's direction. Compiled Windows/Linux executables are **not considered available or validated unless their actual workflows successfully run and the binaries pass target-platform testing**. Earlier Earlier GitHub Actions runs failed before allocation; all workflows were subsequently deleted. Linux binaries may depend on typical system graphics/X11/OpenGL libraries provided by the operating system; no Python runtime is required.
 
-## Deploy the server with Dokploy
+## Deploy the Docker server
 
-## Standard Raw Docker Compose (public repository)
+## Compose build from the public repository
 
-Beacon also supports **Dokploy Raw Compose**, with no prepublished image and no local Dockerfile. Use the root [compose.raw.yaml](compose.raw.yaml), or paste this minimal Compose into Dokploy:
+Beacon can be installed using ordinary Docker Compose or a compatible Compose manager. No prepublished registry image is required. Build from this public GitHub repository:
 
 ```yaml
 services:
@@ -150,29 +150,32 @@ For an empty `beacon-data` database, Beacon **does not require a preconfigured p
 
 **Important deployment prerequisite:** The supplied `compose.dokploy.yaml` must be used with a Git-sourced Dokploy Compose service. Pasting it into a *Raw Compose* editor produces `Dockerfile: no such file or directory` because raw mode does not check out the repository. See [the corrected Dokploy guide](docs/DOKPLOY.md).
 
-## Beacon in-app server updater (0.8.5)
+## Built-in GitHub updater (server 0.9.0)
 
-**Routine updates now belong in the Beacon web Control Center — no new
-Docker Compose blocks per release.** Once 0.8.5 or newer is running:
+After one installation of the 0.9.0 image containing Beacon's native
+supervisor, administrators use **Control Center → Updates**:
 
-1. Open **Control Center → Updates**.
-2. Connect the **existing Dokploy Compose service** once using its HTTPS
-   address, Compose ID, and API key. Beacon verifies and securely persists
-   the connection on its existing data volume (the API key is never returned
-   to the browser).
-3. On later releases, select **Build & deploy latest main**. Dokploy rebuilds
-   the already-configured public Git-source Compose deployment while preserving
-   the database volume.
+1. **Check GitHub** compares the running revision with public
+   `gigabytegrove/beacon` `main`.
+2. **Download & install** fetches source from GitHub, verifies files
+   against immutable Git blob hashes, stores the new code on the
+   existing `/data` volume, and restarts Beacon's application process.
+3. **Roll back** returns to the prior code. Failed startup automatically
+   reverts the application to the previous healthy version.
 
-This **does not require publishing a GHCR image** or giving Beacon Docker
-socket access. The optional [GHCR Compose](compose.image.yaml) remains an
-alternative, not a dependency; it must never be used until an actual image is
-published and tested.
+The updater does **not** contact Docker, Dokploy, Portainer, a sidecar,
+GitHub Actions, an external registry or any deployment provider. Any
+Docker environment can host it. Data remains on the persistent volume.
 
-**One-time bootstrap:** An older running image cannot use the new updater
-until 0.8.5 is installed through the **existing** Dokploy deployment. If
-Dokploy already uses `#main`, that is one initial redeploy **without editing
-Compose**. If the deployment is pinned to an old recovery commit, update the
-pin once. Subsequent source releases use the in-app Update button.
+Changes to `requirements.txt`, the Python base image or the bootstrapping
+supervisor still require rebuilding the Docker image, because those parts
+are immutable and cannot be updated safely as ordinary application code.
+The updater detects changed Python dependencies and refuses that install.
 
-[Complete setup, security and recovery guide](docs/SERVER-UPDATER.md).
+**Existing users need one initial image rebuild** to install the native
+supervisor; if the current Compose already references GitHub `main`,
+the existing deployment can be rebuilt without editing its Compose file.
+After that, compatible application-code updates are performed entirely
+inside Beacon.
+
+[Architecture, security, supported updates and release gates](docs/SERVER-UPDATER.md).
