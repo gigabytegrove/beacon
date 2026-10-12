@@ -1,6 +1,8 @@
 # Install, upgrade, backup and restore
 
-**Using Dokploy?** Follow [DOKPLOY.md](DOKPLOY.md) first. Dokploy fetches the private GitHub repo and builds `./compose.dokploy.yaml`; there is no `/root/beacon` checkout. Shell commands in this standalone document are for installations outside Dokploy.
+Beacon runs in any ordinary Docker/Compose environment. The native GitHub
+updater is **built into Beacon**, not coupled to the container manager.
+Platform-specific instructions (if desired) are at [DOKPLOY.md](DOKPLOY.md).
 
 ## Requirements
 
@@ -23,7 +25,28 @@ curl -fsS http://127.0.0.1:8765/health
 
 Navigate to `http://YOUR-SERVER-IP:8765` and sign in. The server stores data under `/data/beacon.db` within its Docker volume.
 
-## Existing installation upgrade
+## In-app upgrades after the 0.9.0 bootstrap
+
+Once the container image includes `server/launcher.py` (server 0.9.0 or later),
+administrators can perform **application-code updates inside Beacon**:
+
+1. Open **Control Center → Updates → Check GitHub**.
+2. Choose **Download & install** to verify and stage new Python/web files.
+3. Observe update status and version; the app process restarts automatically.
+4. Use **Roll back** when needed. Existing messages/users remain in SQLite.
+
+This works with standalone Docker Engine, Compose, Portainer, Dokploy, or any
+other ordinary Docker host. No Docker socket, external update container or
+management-system credentials are required.
+
+**One-time bootstrap:** An older image without the native launcher must
+be rebuilt **once** from the latest Beacon source. After that, code-only
+updates do not require the Docker management UI. New Python requirements or
+base image changes still require an ordinary Docker image rebuild.
+
+[Native updater details and acceptance tests](SERVER-UPDATER.md).
+
+## Docker image rebuild (bootstrap or changed dependencies)
 
 1. Back up the SQLite volume as described below.
 2. Verify you have no uncommitted changes in the repository.
