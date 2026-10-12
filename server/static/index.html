@@ -466,6 +466,35 @@ $("setupForm").onsubmit=async event=>{
 };
 
 let adminResetUser=null;
+let adminAccounts=[];
+function renderAdminAccounts(){
+ const q=$("adminUserSearch").value.trim().toLowerCase();
+ const matches=adminAccounts.filter(u=>(u.display_name+" "+u.username).toLowerCase().includes(q));
+ $("adminUsersCount").textContent=matches.length===adminAccounts.length?adminAccounts.length+" total account"+(adminAccounts.length===1?"":"s"):matches.length+" of "+adminAccounts.length+" accounts";
+ const table=$("adminUsersTable");table.replaceChildren();
+ if(matches.length===0){
+  const tr=document.createElement("tr"),td=document.createElement("td");td.colSpan=5;td.className="admin-empty";
+  td.textContent=q?"No accounts match your search.":"No member accounts yet.";tr.append(td);table.append(tr);return;
+ }
+ for(const u of matches){
+  const tr=document.createElement("tr"),identity=adminCell(tr,"");
+  const wrapper=document.createElement("div");wrapper.className="member-identity";
+  const avatar=document.createElement("span");avatar.className="member-avatar";
+  avatar.textContent=(u.display_name||u.username||"?").slice(0,1).toUpperCase();
+  const details=document.createElement("span"),name=document.createElement("strong"),tag=document.createElement("small");
+  name.textContent=u.display_name||u.username;tag.textContent="@"+u.username;
+  details.append(name,tag);wrapper.append(avatar,details);identity.append(wrapper);
+  const role=adminCell(tr,""),pill=document.createElement("span");pill.className="role-pill"+(u.is_admin?" admin":"");pill.textContent=u.is_admin?"Administrator":"Member";role.append(pill);
+  adminCell(tr,u.sessions);adminCell(tr,u.created_at?new Date(u.created_at*1000).toLocaleDateString():"—");
+  if(u.id===me.id)adminCell(tr,"Your account");
+  else adminButton(tr,"Reset password",()=>{
+   adminResetUser=u.id;$("adminResetTarget").textContent="Reset password for "+u.display_name+" (@"+u.username+"). Their signed-in devices will be logged out.";
+   $("adminResetPassword").value="";$("adminResetError").textContent="";$("adminResetDialog").showModal();
+  });
+  table.append(tr);
+ }
+}
+
 function adminCell(row,text){const td=document.createElement("td");td.textContent=String(text??"");row.append(td);return td;}
 function adminButton(row,text,handler){const td=document.createElement("td"),b=document.createElement("button");b.textContent=text;b.onclick=handler;td.append(b);row.append(td);}
 function adminMessage(message){$("adminError").textContent=message||"";}
@@ -486,14 +515,9 @@ async function adminTab(section){
    }
    $("adminServerStatus").textContent="Running · Up for "+Math.floor(d.uptime_seconds/60)+" minutes · Database "+Math.ceil(d.database_bytes/1024)+" KiB · "+d.tagline;
   }else if(section==="users"){
-   const users=await api("/admin/users");const root=$("adminUsersTable");root.replaceChildren();
-   for(const u of users){
-    const row=document.createElement("tr");
-    adminCell(row,u.username);adminCell(row,u.display_name);adminCell(row,u.is_admin?"Administrator":"Member");adminCell(row,u.sessions);
-    if(u.id===me.id)adminCell(row,"Your account");
-    else adminButton(row,"Reset password",()=>{adminResetUser=u.id;$("adminResetTarget").textContent=u.username;$("adminResetPassword").value="";$("adminResetDialog").showModal();});
-    root.append(row);
-   }
+   $("adminTitle").textContent="Accounts & access";
+   adminAccounts=await api("/admin/users");
+   renderAdminAccounts();
   }else if(section==="sessions"){
    const sessions=await api("/admin/sessions");const root=$("adminSessionsTable");root.replaceChildren();
    for(const d of sessions){
@@ -522,7 +546,9 @@ document.querySelectorAll("[data-admintab]").forEach(b=>b.onclick=()=>adminTab(b
 $("adminOpenMessenger").onclick=()=>{$("admin").classList.add("hidden");$("roster").classList.remove("hidden");};
 $("webServerAdmin").onclick=()=>adminTab("overview");
 $("adminLogout").onclick=()=>$("logout").click();
-$("adminCreateUser").onclick=()=>$("userDialog").showModal();
+$("adminCreateUser").onclick=openCreateUser;
+$("adminRefreshUsers").onclick=()=>adminTab("users");
+$("adminUserSearch").addEventListener("input",renderAdminAccounts);
 $("adminRefreshSessions").onclick=()=>adminTab("sessions");
 $("adminUpdateRefresh").onclick=()=>adminTab("updates");
 $("adminUpdateNow").onclick=async()=>{
