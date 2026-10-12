@@ -57,14 +57,15 @@ echo 'PASS: Native supervisor starts a healthy server in a read-only container.'
 
 echo 'Injecting an intentionally broken code release into the EPHEMERAL test volume.'
 docker exec "$id" python -c '
-import json,pathlib
+import hashlib,json,pathlib
 root=pathlib.Path("/data/beacon-updates")
 sha="a"*40
 folder=root/"releases"/sha/"server"
 folder.mkdir(parents=True,exist_ok=True)
 (folder/"__init__.py").write_text("")
 (folder/"main.py").write_text("raise RuntimeError(\"intentional rollback smoke test\")\n")
-(folder.parent/"release.json").write_text(json.dumps({"revision":sha,"version":"0.9.1"}))
+hashes={"server/"+p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in folder.iterdir() if p.is_file()}
+(folder.parent/"release.json").write_text(json.dumps({"revision":sha,"version":"0.9.1","files":hashes}))
 (root/"pending.json").write_text(json.dumps({"revision":sha}))
 '
 
