@@ -33,7 +33,7 @@ def test_documentation_and_platform_sources_exist():
 def test_versions_and_server_registration():
     server = (ROOT / "server/main.py").read_text()
     android = (ROOT / "clients/android/app/build.gradle").read_text()
-    assert 'os.getenv("BEACON_RUNTIME_VERSION", os.getenv("BEACON_VERSION", "0.9.0"))' in server
+    assert 'os.getenv("BEACON_RUNTIME_VERSION", os.getenv("BEACON_VERSION", "0.9.1"))' in server
     assert "versionName '0.8.0'" in android
     assert "versionCode 8" in android
     assert '@app.get("/api/messages/search")' in server
