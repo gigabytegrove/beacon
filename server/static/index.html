@@ -508,6 +508,31 @@ $("setupForm").onsubmit=async event=>{
 };
 
 let adminResetUser=null;
+let adminSessions=[];
+function renderAdminSessions(){
+ const term=$("adminSessionSearch").value.trim().toLowerCase();
+ const matches=adminSessions.filter(s=>(s.username+" "+s.device_name+" "+s.presence).toLowerCase().includes(term));
+ $("adminSessionsCount").textContent=matches.length===adminSessions.length?adminSessions.length+" active device"+(adminSessions.length===1?"":"s"):matches.length+" of "+adminSessions.length+" devices";
+ const root=$("adminSessionsTable");root.replaceChildren();
+ if(!matches.length){
+  const row=document.createElement("tr"),td=document.createElement("td");
+  td.colSpan=5;td.className="admin-empty";td.textContent=term?"No devices match your search.":"No active devices.";row.append(td);root.append(row);return;
+ }
+ for(const s of matches){
+  const row=document.createElement("tr");adminCell(row,"@"+s.username);adminCell(row,s.device_name);
+  const status=adminCell(row,""),pill=document.createElement("span");
+  pill.className="presence-pill "+s.presence;pill.textContent=(s.presence||"Unknown").replace(/^./,m=>m.toUpperCase());status.append(pill);
+  adminCell(row,s.last_seen?new Date(s.last_seen*1000).toLocaleString():"Not seen");
+  if(s.id===me.session_id){adminCell(row,"This session");}
+  else adminButton(row,"Revoke",async()=>{
+   if(!confirm("Sign out @"+s.username+" on "+s.device_name+"? This will invalidate their active session."))return;
+   try{await api("/admin/sessions/"+s.id,"DELETE");toast("Device session revoked.","success");await adminTab("sessions");}
+   catch(err){adminMessage(err.message);}
+  });
+  root.append(row);
+ }
+}
+
 let adminAccounts=[];
 function renderAdminAccounts(){
  const q=$("adminUserSearch").value.trim().toLowerCase();
@@ -543,7 +568,11 @@ function adminMessage(message){$("adminError").textContent=message||"";}
 async function adminTab(section){
  if(!me||!me.is_admin)return;
  $("admin").classList.remove("hidden");$("roster").classList.add("hidden");adminMessage("");
- document.querySelectorAll("[data-admintab]").forEach(b=>b.classList.toggle("active",b.dataset.admintab===section));
+ document.querySelectorAll("[data-admintab]").forEach(b=>{
+  const selected=b.dataset.admintab===section;
+  b.classList.toggle("active",selected);
+  if(selected)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");
+ });
  for(const name of ["overview","users","sessions","settings","updates"])$("admin"+name[0].toUpperCase()+name.slice(1)).classList.toggle("hidden",name!==section);
  try{
   if(section==="overview"){
@@ -555,24 +584,22 @@ async function adminTab(section){
     const strong=document.createElement("strong");strong.textContent=Number(value).toLocaleString();
     box.append(small,strong);$("adminMetrics").append(box);
    }
-   $("adminServerStatus").textContent="Running · Up for "+Math.floor(d.uptime_seconds/60)+" minutes · Database "+Math.ceil(d.database_bytes/1024)+" KiB · "+d.tagline;
+   $("adminHealthPill").textContent="● Running";
+   const uptime=Math.floor(d.uptime_seconds/60),hours=Math.floor(uptime/60),minutes=uptime%60;
+   $("adminServerStatus").textContent="Online for "+(hours?hours+"h ":"")+minutes+"m · Database "+Math.ceil(d.database_bytes/1024)+" KiB · "+d.tagline;
   }else if(section==="users"){
    $("adminTitle").textContent="Accounts & access";
    adminAccounts=await api("/admin/users");
    renderAdminAccounts();
   }else if(section==="sessions"){
-   const sessions=await api("/admin/sessions");const root=$("adminSessionsTable");root.replaceChildren();
-   for(const d of sessions){
-    const row=document.createElement("tr");adminCell(row,d.username);adminCell(row,d.device_name);adminCell(row,d.presence);
-    adminCell(row,d.last_seen?new Date(d.last_seen*1000).toLocaleString():"Not seen");
-    adminButton(row,"Revoke",async()=>{
-     if(!confirm("Revoke "+d.username+"'s "+d.device_name+" session?"))return;
-     try{await api("/admin/sessions/"+d.id,"DELETE");await adminTab("sessions");}
-     catch(e){adminMessage(e.message);}
-    });root.append(row);
-   }
+   $("adminTitle").textContent="Device security";
+   adminSessions=await api("/admin/sessions");
+   renderAdminSessions();
   }else if(section==="settings"){
-   const settings=await api("/admin/settings");$("adminServerName").value=settings.server_name;$("adminTagline").value=settings.tagline;
+   $("adminTitle").textContent="Server settings";
+   $("adminSettingsError").textContent="";
+   const settings=await api("/admin/settings");
+   $("adminServerName").value=settings.server_name;$("adminTagline").value=settings.tagline;
   }else if(section==="updates"){
    const d=await api("/admin/update/status");
    $("adminTitle").textContent="Server updates";
@@ -592,6 +619,10 @@ $("adminCreateUser").onclick=openCreateUser;
 $("adminRefreshUsers").onclick=()=>adminTab("users");
 $("adminUserSearch").addEventListener("input",renderAdminAccounts);
 $("adminRefreshSessions").onclick=()=>adminTab("sessions");
+$("adminSessionSearch").addEventListener("input",renderAdminSessions);
+$("adminQuickAccounts").onclick=()=>adminTab("users");
+$("adminQuickDevices").onclick=()=>adminTab("sessions");
+$("adminQuickSettings").onclick=()=>adminTab("settings");
 $("adminUpdateRefresh").onclick=()=>adminTab("updates");
 $("adminUpdateNow").onclick=async()=>{
  if(!confirm("Request a Beacon server update? Dokploy may restart this server; existing data will be retained."))return;
@@ -613,10 +644,17 @@ $("adminResetForm").onsubmit=async e=>{
  }catch(err){$("adminResetError").textContent=err.message;}
  finally{submit.disabled=false;}
 };
-$("adminSettingsForm").onsubmit=async e=>{e.preventDefault();try{
- await api("/admin/settings","PUT",{server_name:$("adminServerName").value,tagline:$("adminTagline").value});
- await adminTab("settings");
- }catch(err){adminMessage(err.message);}};
+$("adminSettingsForm").onsubmit=async e=>{
+ e.preventDefault();
+ const submit=$("adminSaveSettings");submit.disabled=true;submit.textContent="Saving…";
+ $("adminSettingsError").textContent="";
+ try{
+  const result=await api("/admin/settings","PUT",{server_name:$("adminServerName").value.trim(),tagline:$("adminTagline").value.trim()});
+  $("adminServerName").value=result.server_name;$("adminTagline").value=result.tagline;
+  toast("Server settings saved.","success");
+ }catch(err){$("adminSettingsError").textContent=err.message;}
+ finally{submit.disabled=false;submit.textContent="Save changes";}
+};
 
 loadSetupState().then(needed=>{if(!needed&&token)start();});
 </script></body></html>
