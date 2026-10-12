@@ -61,7 +61,71 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 .admin-body input{background:white;color:#182f4c;border:1px solid #b7cbdd}
 .admin-body .muted{color:#667e98}
 .admin-card .admin-primary{background:#1878ec;color:#fff}
+
+/* Control Center: designed for actual account administration, not just raw tables. */
+#admin{background:#f1f5fb}
+.admin-top{position:sticky;top:0;z-index:5;background:#102441;border-bottom:1px solid #2c4a70;box-shadow:0 8px 30px #132d481a}
+.admin-top strong{letter-spacing:-.025em}
+.admin-body{padding:30px 28px 52px}
+.admin-body>h1{font-size:clamp(25px,3vw,32px);letter-spacing:-.035em}
+.admin-body>p.muted{margin-top:7px;font-size:14px}
+.admin-tabs{gap:6px;padding:6px;background:#e6eef9;border:1px solid #d6e3f2;border-radius:13px;width:max-content;max-width:100%}
+.admin-tabs button{border:0;background:transparent;color:#4a647f;font-weight:650;padding:11px 17px}
+.admin-tabs button:hover{background:#d7e5f8;color:#173f6d}
+.admin-tabs button.active{background:#fff;color:#1767c6;box-shadow:0 2px 9px #244c811d}
+.admin-card{border:1px solid #dbe5f1;box-shadow:0 6px 20px #233b5610}
+.admin-card h2{font-size:20px;letter-spacing:-.02em}
+.admin-card .admin-primary{background:#166dec;border-color:#166dec;color:white;font-weight:650}
+.admin-card .admin-primary:hover{background:#0d5ccf}
+.admin-section-header{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+.admin-section-header p{margin-top:7px;line-height:1.5}
+.admin-section-actions{display:flex;gap:9px;align-items:center}
+.admin-section-actions>button{white-space:nowrap}
+.admin-secondary{background:#fff;color:#265782;border:1px solid #c5d7ea}
+.admin-secondary:hover{background:#eaf3ff}
+.admin-eyebrow{color:#1876d2;text-transform:uppercase;letter-spacing:.13em;font-size:10px;font-weight:800;margin-bottom:6px}
+.admin-account-toolbar{background:#f5f8fd;border:1px solid #e1eaf5;border-radius:12px;padding:12px 14px;margin:15px 0;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.admin-account-toolbar input{width:min(100%,340px);margin:0;padding:11px 14px}
+.admin-account-toolbar .muted{margin-left:auto;font-size:12px}
+.admin-table th{padding:13px 11px;border-bottom:1px solid #dce6f2;letter-spacing:.025em;text-transform:uppercase;font-size:11px}
+.admin-table td{padding:15px 11px;vertical-align:middle}
+.admin-table tbody tr:hover{background:#f8faff}
+.admin-table tbody tr:last-child td{border-bottom:0}
+.member-identity{display:flex;align-items:center;gap:11px;min-width:195px}
+.member-avatar{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e4efff;color:#1c62b4;font-weight:800;font-size:14px;flex-shrink:0}
+.member-identity strong{display:block;color:#182f4b;font-weight:750}
+.member-identity small{display:block;color:#768ca2;margin-top:4px}
+.role-pill{display:inline-flex;align-items:center;border-radius:24px;padding:5px 9px;background:#e7f0ff;color:#2866b5;font-size:11px;font-weight:750}
+.role-pill.admin{background:#f1eaff;color:#7956ac}
+.admin-empty{padding:28px!important;text-align:center;color:#6c8298!important}
+#admin .admin-table button{font-weight:600;border-radius:8px;padding:8px 11px}
+#admin .admin-table button:hover{background:#e6f0ff}
+.account-dialog{background:#fff;color:#19334e;border-color:#d5e2f1;width:min(510px,calc(100vw - 24px));max-height:min(90dvh,790px);overflow:auto;padding:0;box-shadow:0 28px 95px #0410217a}
+.account-dialog::backdrop{background:#071629ad;backdrop-filter:blur(3px)}
+.account-dialog form{padding:24px}
+.account-dialog .admin-eyebrow{margin:0 0 8px}
+.account-dialog h2{font-size:23px;letter-spacing:-.03em;margin-bottom:7px}
+.account-dialog .form-intro{font-size:13px;color:#6f859b;line-height:1.5;margin-bottom:20px}
+.account-dialog label{font-weight:650;font-size:12px;color:#36536f;margin:14px 0}
+.account-dialog input{display:block;margin-top:7px;width:100%;background:#f9fbff;color:#1c334f;border:1px solid #cbd9e9}
+.account-dialog input:focus-visible{outline:2px solid #3691ff;outline-offset:1px}
+.account-dialog .form-help{display:block;color:#738ba2;font-weight:450;font-size:11px;line-height:1.5;margin-top:5px}
+.account-dialog .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.account-dialog .dialog-actions{border-top:1px solid #e3ebf5;margin:20px -24px -24px;padding:14px 24px;display:flex;justify-content:flex-end;gap:9px;background:#f7faff}
+.account-dialog button{margin:0}
+.account-dialog button[type=submit]{background:#176ee7;color:#fff;border-color:#176ee7;font-weight:700;min-width:130px}
+.account-dialog button[type=submit]:hover{background:#135cca}
+.account-dialog .secondary{background:#fff;color:#385878;border:1px solid #cbd8e7}
+.account-dialog .form-error{color:#a72736;line-height:1.5;min-height:0;font-size:12px;font-weight:650}
+.account-dialog .form-error:not(:empty){background:#fff0f2;border:1px solid #f4c8cd;border-radius:9px;padding:10px 12px;margin-top:12px}
+.account-dialog .show-password{background:none!important;border:0!important;color:#1768bf!important;font-size:12px;font-weight:700;padding:3px 0}
+#adminResetDialog{background:#fff;color:#19334e;border-color:#d5e2f1}
 #adminResetDialog input{background:#fff;color:#142a45}
+#adminResetDialog p.error{color:#ad273b}
+#adminResetDialog button{background:#176ee7;color:#fff;border-color:#176ee7}
+#adminResetDialog #adminResetCancel{background:#fff;color:#365775;border-color:#cbd8e7}
+@media(max-width:700px){.admin-body{padding:16px}.admin-top{padding:15px}.admin-tabs{width:100%;overflow-x:auto;flex-wrap:nowrap}.admin-tabs button{white-space:nowrap;padding:10px 12px}.admin-section-header{align-items:stretch}.admin-section-actions{width:100%}.admin-section-actions button{flex:1}.admin-account-toolbar input{width:100%}.admin-account-toolbar .muted{margin-left:0}.account-dialog .field-row{grid-template-columns:1fr;gap:0}}
+
 @media(max-width:600px){.admin-body{padding:14px}.admin-top{padding:12px}}
 </style></head>
 <body>
@@ -101,8 +165,25 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
    <div class="admin-card"><h2>Server status</h2><p id="adminServerStatus">Loading…</p></div>
   </section>
   <section id="adminUsers" class="admin-section admin-card hidden">
-   <h2>Member accounts <button id="adminCreateUser" class="admin-primary">+ Create account</button></h2>
-   <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Sessions</th><th>Action</th></tr></thead><tbody id="adminUsersTable"></tbody></table></div>
+   <div class="admin-section-header">
+    <div>
+     <p class="admin-eyebrow">Identity &amp; access</p>
+     <h2>Member accounts</h2>
+     <p class="muted">Create accounts, review who has access, and manage passwords without losing their conversations.</p>
+    </div>
+    <div class="admin-section-actions">
+     <button type="button" id="adminRefreshUsers" class="admin-secondary">Refresh</button>
+     <button type="button" id="adminCreateUser" class="admin-primary">+ Create account</button>
+    </div>
+   </div>
+   <div class="admin-account-toolbar">
+    <input id="adminUserSearch" type="search" autocomplete="off" placeholder="Search name or username…" aria-label="Search member accounts">
+    <span id="adminUsersCount" class="muted" aria-live="polite">Loading accounts…</span>
+   </div>
+   <div class="admin-table-wrap">
+    <table class="admin-table"><thead><tr><th>Member</th><th>Role</th><th>Active devices</th><th>Added</th><th>Actions</th></tr></thead>
+    <tbody id="adminUsersTable"><tr><td colspan="5" class="admin-empty">Loading accounts…</td></tr></tbody></table>
+   </div>
   </section>
   <section id="adminSessions" class="admin-section admin-card hidden">
    <h2>Signed-in devices <button id="adminRefreshSessions">Refresh</button></h2>
@@ -145,7 +226,36 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 <dialog id="prefsDialog"><h2>Notifications and sounds</h2><label class="settings-row"><input type="checkbox" id="soundEnabled"> Play sign-on and message sounds</label><label class="settings-row"><input type="checkbox" id="popNewMessage"> Automatically open new IM windows (browser may block pop-ups)</label><p class="muted">These preferences are stored on this browser only. Messages and read status remain synced with the server.</p><button data-close="prefsDialog">Done</button></dialog>
 <dialog id="addDialog"><h2>Add a buddy</h2><p class="muted">Choose someone already registered on this Beacon server.</p><select id="directory"></select><button id="confirmAdd">Add to buddy list</button> <button data-close="addDialog">Cancel</button></dialog>
 <dialog id="profileDialog"><h2>Your profile</h2><label>Display name<input id="profileName" maxlength="80"></label><label>What's on your mind?<input id="profileStatus" maxlength="140"></label><label>Profile photo<input id="profilePhoto" type="file" accept="image/png,image/jpeg,image/webp"></label><button id="saveProfile">Save profile</button> <button data-close="profileDialog">Cancel</button></dialog>
-<dialog id="userDialog"><h2>Create an account</h2><label>Username<input id="newUsername" minlength="3" maxlength="32"></label><label>Display name<input id="newDisplay" maxlength="80"></label><label>Password<input id="newPassword" type="password" minlength="12"></label><button id="saveUser">Create</button> <button data-close="userDialog">Cancel</button></dialog>
+<dialog id="userDialog" class="account-dialog" aria-labelledby="createAccountTitle">
+ <form id="createUserForm" method="dialog">
+  <p class="admin-eyebrow">Beacon · Account management</p>
+  <h2 id="createAccountTitle">Create a member account</h2>
+  <p class="form-intro">Add someone to your Beacon server. They'll be able to sign in right away with the username and password you set.</p>
+  <div class="field-row">
+   <label>Username
+    <input id="newUsername" autocomplete="off" autocapitalize="off" spellcheck="false" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]{3,32}" required placeholder="e.g. jordan">
+    <span class="form-help">3–32 letters, numbers, dots, dashes or underscores.</span>
+   </label>
+   <label>Display name
+    <input id="newDisplay" autocomplete="off" maxlength="80" required placeholder="e.g. Jordan Smith">
+    <span class="form-help">The name others will see.</span>
+   </label>
+  </div>
+  <label>Password
+   <input id="newPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required placeholder="At least 12 characters">
+   <span class="form-help">At least 12 characters. Don't reuse an existing password.</span>
+  </label>
+  <label>Confirm password
+   <input id="newPasswordConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="256" required placeholder="Re-enter password">
+  </label>
+  <button id="toggleNewPassword" class="show-password" type="button" aria-pressed="false">Show passwords</button>
+  <p id="createUserError" class="form-error" role="alert" aria-live="polite"></p>
+  <div class="dialog-actions">
+   <button type="button" id="cancelUser" class="secondary">Cancel</button>
+   <button id="saveUser" type="submit">Create account</button>
+  </div>
+ </form>
+</dialog>
 <dialog id="deviceDialog"><h2>Signed-in devices</h2><div id="sessionList"></div><button data-close="deviceDialog">Close</button></dialog>
 <div id="toasts" aria-live="polite"></div>
 <script>
