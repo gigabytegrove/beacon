@@ -199,10 +199,23 @@ func(u *UI) showRoster(){
  extras:=container.NewGridWithColumns(2,
   widget.NewButton("Update photo",u.uploadPhoto),
   widget.NewButton("Change password",u.changePassword))
- footer:=container.NewGridWithColumns(3,
+ footerButtons:=[]fyne.CanvasObject{
   widget.NewButton("Devices",u.showSessions),
   widget.NewButton("Settings",u.showPreferences),
-  widget.NewButton("Sign out",u.logout))
+  widget.NewButton("Sign out",u.logout),
+ }
+ if runtime.GOOS=="windows" {
+  footerButtons=append([]fyne.CanvasObject{
+   widget.NewButton("Dock / Undock",func(){
+    enabled:=u.app.Preferences().BoolWithFallback("dockRight",false)
+    var err error
+    if enabled {err=undockBuddyList()}else{err=dockBuddyList()}
+    if err!=nil {u.alert(err);return}
+    u.app.Preferences().SetBool("dockRight",!enabled)
+   }),
+  },footerButtons...)
+ }
+ footer:=container.NewGridWithColumns(len(footerButtons),footerButtons...)
  header:=container.NewVBox(beaconHeader("Your people. Your network."),profile,controls,extras)
  if bool(u.me.IsAdmin){header.Add(widget.NewButton("Create user account",u.createUser))}
  u.root.SetContent(container.NewPadded(container.NewBorder(
@@ -210,6 +223,9 @@ func(u *UI) showRoster(){
   nil,nil,container.NewVScroll(u.roster),
  )))
  u.root.SetTitle("Beacon Messenger · Buddy List")
+ if runtime.GOOS=="windows"&&u.app.Preferences().BoolWithFallback("dockRight",false) {
+  fyne.Do(func(){if err:=dockBuddyList();err!=nil{u.alert(err)}})
+ }
 }
 func(u *UI) startPolling(){
  stop:=make(chan struct{});u.pollStop=stop
@@ -383,9 +399,20 @@ func(u *UI) showPreferences(){
  auto.SetChecked(u.app.Preferences().BoolWithFallback("autoOpenIM",false))
  closeToTray:=widget.NewCheck("Closing the buddy list hides it in the system tray",nil)
  closeToTray.SetChecked(u.app.Preferences().BoolWithFallback("closeToTray",runtime.GOOS=="windows"))
- dialog.ShowForm("Desktop Preferences","Save","Cancel",
-  []*widget.FormItem{widget.NewFormItem("",auto),widget.NewFormItem("",closeToTray)},
+ items:=[]*widget.FormItem{widget.NewFormItem("",auto),widget.NewFormItem("",closeToTray)}
+ dockRight:=widget.NewCheck("Dock the buddy list at the right edge of the screen",nil)
+ if runtime.GOOS=="windows"{
+  dockRight.SetChecked(u.app.Preferences().BoolWithFallback("dockRight",false))
+  items=append(items,widget.NewFormItem("",dockRight))
+ }
+ dialog.ShowForm("Desktop Preferences","Save","Cancel",items,
   func(ok bool){if ok{
+   if runtime.GOOS=="windows"{
+    var err error
+    if dockRight.Checked{err=dockBuddyList()}else{err=undockBuddyList()}
+    if err!=nil{u.alert(err);return}
+    u.app.Preferences().SetBool("dockRight",dockRight.Checked)
+   }
    u.app.Preferences().SetBool("autoOpenIM",auto.Checked)
    u.app.Preferences().SetBool("closeToTray",closeToTray.Checked)
   }},u.root)
