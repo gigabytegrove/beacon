@@ -1,5 +1,6 @@
 # Beacon Messenger — Dokploy Docker Compose (public GitHub source)
-# Rebuild the existing service when updating; never delete the beacon-data volume.
+# One-time installation of native updater; subsequent app-code releases update in Beacon UI.
+# Never delete beacon-data: code releases and chat database both persist here.
 services:
   beacon:
     build: "https://github.com/gigabytegrove/beacon.git#main"
@@ -8,11 +9,7 @@ services:
       - "8765:8765"
     environment:
       BEACON_DB: /data/beacon.db
-      # Configure in Dokploy Environment; never put credentials in Git.
-      BEACON_DOKPLOY_URL: ${BEACON_DOKPLOY_URL:-}
-      BEACON_DOKPLOY_COMPOSE_ID: ${BEACON_DOKPLOY_COMPOSE_ID:-}
-      BEACON_DOKPLOY_API_KEY: ${BEACON_DOKPLOY_API_KEY:-}
-      BEACON_UPDATE_CHANNEL: git
+      # Native GitHub updates need no deployment-platform credentials.
     volumes:
       - beacon-data:/data
     networks:
