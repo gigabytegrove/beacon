@@ -211,11 +211,17 @@ def _stage(revision):
     try:
         _status_set("verifying", "Verifying the GitHub commit and checking source compatibility…")
         version = _install_archive(archive, revision, blobs, temp)
+        staged_files = {
+            str(path.relative_to(temp)).replace(os.sep, "/"):
+                hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in (temp / "server").rglob("*") if path.is_file()
+        }
         meta = {
             "revision": revision,
             "version": version,
             "archive_sha256": digest,
             "downloaded_at": int(time.time()),
+            "files": staged_files,
         }
         _atomic_json(temp / "release.json", meta)
         release.parent.mkdir(parents=True, exist_ok=True)
