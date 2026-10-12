@@ -209,7 +209,13 @@ class NewMessage(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": app.version, "revision": os.getenv("BEACON_RUNTIME_REVISION", os.getenv("BEACON_REVISION", "unknown"))}
+    ui = Path(__file__).parent / "static" / "index.html"
+    return {
+        "status": "ok",
+        "version": app.version,
+        "revision": os.getenv("BEACON_RUNTIME_REVISION", os.getenv("BEACON_REVISION", "unknown")),
+        "ui_sha256": hashlib.sha256(ui.read_bytes()).hexdigest()[:16],
+    }
 
 
 @app.get("/api/setup/status")
