@@ -1,5 +1,12 @@
 # Beacon changelog
 
+## Local-only builds — October 12, 2026
+
+- Removed **all four GitHub Actions workflow files** (Windows, Linux, Android, server CI). Source pushes no longer initiate these builds.
+- Documented required local build and verification gates, with candid separation of full Go/Fyne, Android APK and limited-feature locally compiled Win32/X11 preview executables.
+- Left full client source and local/manual build scripts intact; no Python runtime is required on end-user desktops.
+
+
 ## 0.8.0 — Branded primary-client integration (build verification pending)
 
 - Applied Beacon's approved navy, electric-blue and light-surface visual system to the supported Go/Fyne desktop source, including logo and theme, login card, readable errors, persisted nonsecret server address, buddy filtering, presence cards and individual IM message cards.
