@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # Local-only image release. No GitHub Actions or Docker access on the Beacon server.
-# Usage: bash scripts/publish-server-image.sh 0.8.3
+# Usage (optional image publication): bash scripts/publish-server-image.sh 0.9.0
 version="${1:-}"
 if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.-]+)?$ ]]; then
   echo "Usage: bash $0 MAJOR.MINOR.PATCH[-prerelease]" >&2
@@ -12,6 +12,11 @@ command -v docker >/dev/null || { echo "ERROR: Docker is required." >&2; exit 1;
 command -v git >/dev/null || { echo "ERROR: Git is required." >&2; exit 1; }
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
+expected_version="$(tr -d '\\r\\n' < server/version.txt)"
+if [[ "$version" != "$expected_version" ]]; then
+  echo "ERROR: Requested image version $version does not match server/version.txt ($expected_version)." >&2
+  exit 1
+fi
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "ERROR: Refusing to publish with uncommitted changes." >&2
   exit 1
