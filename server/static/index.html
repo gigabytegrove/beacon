@@ -128,6 +128,19 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 #adminResetDialog #adminResetCancel{background:#fff;color:#365775;border-color:#cbd8e7}
 @media(max-width:700px){.admin-body{padding:16px}.admin-top{padding:15px}.admin-tabs{width:100%;overflow-x:auto;flex-wrap:nowrap}.admin-tabs button{white-space:nowrap;padding:10px 12px}.admin-section-header{align-items:stretch}.admin-section-actions{width:100%}.admin-section-actions button{flex:1}.admin-account-toolbar input{width:100%}.admin-account-toolbar .muted{margin-left:0}.account-dialog .field-row{grid-template-columns:1fr;gap:0}}
 
+.admin-info-line{padding:15px 17px;background:#f5f9ff;border:1px solid #e3edf8;color:#3c5770;border-radius:10px;line-height:1.6}
+.admin-shortcuts{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:11px}
+.admin-shortcuts button{background:#f7faff;border-color:#d8e6f6;color:#275784;padding:17px 18px;text-align:left;display:flex;justify-content:space-between;align-items:center;font-weight:650}
+.admin-shortcuts button:hover{background:#e9f3ff}.admin-shortcuts span{font-size:20px;color:#227ad6}
+.presence-pill{display:inline-flex;gap:5px;align-items:center;padding:5px 9px;border-radius:12px;background:#ebf1fa;color:#5d7691;font-size:11px;font-weight:700}
+.presence-pill.available{background:#dff8ed;color:#168354}.presence-pill.away{background:#fff2dd;color:#9b690a}.presence-pill.busy{background:#ffe6e6;color:#a53c42}
+.admin-settings-form{max-width:620px;margin-top:18px}
+.admin-settings-form label{display:block;margin:19px 0;font-weight:700;color:#284763}
+.admin-settings-form input{margin:8px 0 0;font-weight:450}
+.admin-settings-form .form-help{display:block;margin-top:6px;color:#738aa2;font-size:12px;font-weight:400}
+.admin-settings-actions{display:flex;align-items:center;gap:15px;flex-wrap:wrap;border-top:1px solid #e1eaf5;padding-top:20px}
+#admin .admin-settings-actions button{padding:11px 22px}
+
 @media(max-width:600px){.admin-body{padding:14px}.admin-top{padding:12px}}
 </style></head>
 <body>
@@ -163,10 +176,22 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
   </nav>
   <p id="adminError" class="error" role="alert"></p>
   <section id="adminOverview" class="admin-section">
-   <div id="adminMetrics" class="admin-metrics"></div>
-   <div class="admin-card"><h2>Server status</h2><p id="adminServerStatus">Loading…</p></div>
-  </section>
-  <section id="adminUsers" class="admin-section admin-card hidden">
+    <div id="adminMetrics" class="admin-metrics"></div>
+    <div class="admin-card">
+     <div class="admin-section-header"><div><p class="admin-eyebrow">Infrastructure</p><h2>Server health</h2><p class="muted">Beacon's current operational snapshot.</p></div><span id="adminHealthPill" class="role-pill">Checking…</span></div>
+     <p id="adminServerStatus" class="admin-info-line">Loading…</p>
+    </div>
+    <div class="admin-card">
+     <p class="admin-eyebrow">Quick actions</p><h2>Manage your server</h2>
+     <p class="muted" style="margin:8px 0 16px">Common tasks stay one click away.</p>
+     <div class="admin-shortcuts">
+      <button type="button" id="adminQuickAccounts">Manage accounts <span aria-hidden="true">→</span></button>
+      <button type="button" id="adminQuickDevices">Signed-in devices <span aria-hidden="true">→</span></button>
+      <button type="button" id="adminQuickSettings">Server settings <span aria-hidden="true">→</span></button>
+     </div>
+    </div>
+   </section>
+<section id="adminUsers" class="admin-section admin-card hidden">
    <div class="admin-section-header">
     <div>
      <p class="admin-eyebrow">Identity &amp; access</p>
@@ -188,16 +213,30 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
    </div>
   </section>
   <section id="adminSessions" class="admin-section admin-card hidden">
-   <h2>Signed-in devices <button id="adminRefreshSessions">Refresh</button></h2>
-   <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Account</th><th>Device</th><th>Presence</th><th>Last seen</th><th>Action</th></tr></thead><tbody id="adminSessionsTable"></tbody></table></div>
+   <div class="admin-section-header">
+    <div><p class="admin-eyebrow">Security &amp; sessions</p><h2>Signed-in devices</h2><p class="muted">Review active sessions and revoke access from devices.</p></div>
+    <div class="admin-section-actions"><button type="button" id="adminRefreshSessions" class="admin-secondary">Refresh devices</button></div>
+   </div>
+   <div class="admin-account-toolbar">
+    <input id="adminSessionSearch" type="search" autocomplete="off" placeholder="Search accounts or devices…" aria-label="Search active devices">
+    <span id="adminSessionsCount" class="muted" aria-live="polite">Loading devices…</span>
+   </div>
+   <div class="admin-table-wrap"><table class="admin-table"><thead><tr><th>Account</th><th>Device</th><th>Presence</th><th>Last seen</th><th>Action</th></tr></thead><tbody id="adminSessionsTable"><tr><td colspan="5" class="admin-empty">Loading devices…</td></tr></tbody></table></div>
   </section>
-  <section id="adminSettings" class="admin-section admin-card hidden">
-   <h2>Server settings</h2>
-   <form id="adminSettingsForm"><label>Server name<input id="adminServerName" maxlength="64" required></label>
-    <label>Description<input id="adminTagline" maxlength="120" required></label>
-    <button class="admin-primary">Save settings</button></form>
+<section id="adminSettings" class="admin-section admin-card hidden">
+   <div class="admin-section-header"><div><p class="admin-eyebrow">Preferences</p><h2>Server settings</h2><p class="muted">Choose the identity displayed in the Beacon control center.</p></div></div>
+   <form id="adminSettingsForm" class="admin-settings-form">
+    <label>Server name<input id="adminServerName" minlength="2" maxlength="64" autocomplete="off" required placeholder="e.g. Family Beacon">
+     <span class="form-help">2–64 characters. Visible to administrators.</span>
+    </label>
+    <label>Description<input id="adminTagline" minlength="1" maxlength="120" autocomplete="off" required placeholder="e.g. Your people. Your network.">
+     <span class="form-help">Short text displayed on your server dashboard.</span>
+    </label>
+    <p id="adminSettingsError" class="error" role="alert" aria-live="polite"></p>
+    <div class="admin-settings-actions"><button id="adminSaveSettings" type="submit" class="admin-primary">Save changes</button><span class="muted">No restart required.</span></div>
+   </form>
   </section>
-  <section id="adminUpdates" class="admin-section admin-card hidden">
+<section id="adminUpdates" class="admin-section admin-card hidden">
    <h2>Server updates</h2>
    <p class="muted">Updates are requested through Dokploy. Beacon does not mount the Docker socket.</p>
    <p><strong>Installed version:</strong> <span id="adminCurrentVersion">Checking…</span></p>
