@@ -194,7 +194,7 @@ class FirstRunAdmin(BaseModel):
 class NewUser(BaseModel):
     username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
     password: str = Field(min_length=12, max_length=256)
-    display_name: str = Field(min_length=1, max_length=80) = Field(min_length=1, max_length=80)
+    display_name: str = Field(min_length=1, max_length=80)
 
 
 class ChangePassword(BaseModel):
