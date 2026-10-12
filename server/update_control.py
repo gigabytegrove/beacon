@@ -200,8 +200,27 @@ def _install_archive(data, sha, blobs, target):
 def _stage(revision):
     root = _root()
     release = root / "releases" / revision
-    if release.is_dir() and _json(release / "release.json").get("revision") == revision:
-        return _json(release / "release.json")
+    if release.is_dir() and not release.is_symlink():
+        saved = _json(release / "release.json")
+        hashes = saved.get("files")
+        if saved.get("revision") == revision and isinstance(hashes, dict) and hashes:
+            try:
+                intact = all(
+                    isinstance(name, str) and name.startswith("server/") and
+                    ".." not in Path(name).parts and not (release / name).is_symlink() and
+                    (release / name).is_file() and
+                    hashlib.sha256((release / name).read_bytes()).hexdigest() == digest
+                    for name, digest in hashes.items()
+                )
+            except OSError:
+                intact = False
+            if intact and "server/main.py" in hashes:
+                return saved
+        # An incomplete or tampered code release may never be activated.
+        # Discard only that staging directory, not any application data.
+        shutil.rmtree(release)
+    elif release.is_symlink():
+        raise ValueError("Unsafe existing release link. Update refused.")
     _status_set("downloading", "Downloading Beacon from GitHub…", target_revision=revision)
     blobs = _manifest(revision)
     archive = _github_get(GITHUB_API + "/tarball/" + revision, max_bytes=MAX_TARBALL)
