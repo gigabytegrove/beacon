@@ -231,6 +231,12 @@ def register(app, *, administrator):
             if not key:
                 existing = _configuration()
                 if existing:
+                    # Never forward an already stored API key to a newly
+                    # entered host. Changing Dokploy servers requires a fresh
+                    # key to prevent credential exfiltration via this API.
+                    requested_origin = data.url.strip().rstrip("/")
+                    if requested_origin != existing[0]:
+                        raise HTTPException(422, "Changing Dokploy addresses requires entering a new API key.")
                     key = existing[2]
             try:
                 config = _validated({
