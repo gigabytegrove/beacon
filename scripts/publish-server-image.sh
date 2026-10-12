@@ -12,7 +12,7 @@ command -v docker >/dev/null || { echo "ERROR: Docker is required." >&2; exit 1;
 command -v git >/dev/null || { echo "ERROR: Git is required." >&2; exit 1; }
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$root"
-expected_version="$(tr -d '\\r\\n' < server/version.txt)"
+expected_version="$(head -n 1 server/version.txt)"
 if [[ "$version" != "$expected_version" ]]; then
   echo "ERROR: Requested image version $version does not match server/version.txt ($expected_version)." >&2
   exit 1
