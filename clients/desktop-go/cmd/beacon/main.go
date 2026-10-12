@@ -139,7 +139,7 @@ func(u *UI) showLogin(){
  u.root.SetContent(container.NewPadded(container.NewVBox(
   beaconHeader("Your people. Your network."),
   widget.NewSeparator(),card,hint,
-  widget.NewLabel("BEACON MESSENGER  •  SELF-HOSTED  •  NATIVE GO"),
+  widget.NewLabel("BEACON MESSENGER  •  SELF-HOSTED"),
  )))
  u.root.SetTitle("Beacon Messenger · Sign In")
 }
@@ -308,14 +308,14 @@ func(u *UI) applyRoster(newBuddies []beacon.Buddy,newGroups []beacon.Group){
 func(u *UI) drawRoster(){
  if u.roster==nil{return}
  u.roster.RemoveAll()
- sorted:=append([]beacon.Buddy(nil),newBuddies...)
+ sorted:=append([]beacon.Buddy(nil),u.buddies...)
  sort.Slice(sorted,func(i,j int)bool{
   if sorted[i].Presence=="offline"&&sorted[j].Presence!="offline"{return false}
   if sorted[j].Presence=="offline"&&sorted[i].Presence!="offline"{return true}
   return strings.ToLower(sorted[i].Name())<strings.ToLower(sorted[j].Name())
  })
  allGroups:=[]beacon.Group{{ID:0,Name:"Buddies"}}
- allGroups=append(allGroups,newGroups...)
+ allGroups=append(allGroups,u.groups...)
  for _,g:=range allGroups {
   var peers []beacon.Buddy
   online:=0
