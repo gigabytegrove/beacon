@@ -646,13 +646,21 @@ async function adminTab(section){
    const settings=await api("/admin/settings");
    $("adminServerName").value=settings.server_name;$("adminTagline").value=settings.tagline;
   }else if(section==="updates"){
-   const d=await api("/admin/update/status");
-   $("adminTitle").textContent="Server updates";
-   $("adminCurrentVersion").textContent=d.current_version;
-   $("adminCurrentRevision").textContent=d.revision;
-   $("adminUpdateSource").textContent=d.deployment_source==="image"?"Prebuilt registry image":"Git source build";
+   $("adminTitle").textContent="Updates & deployment";
+   const [d,config]=await Promise.all([api("/admin/update/status"),api("/admin/update/config")]);
+   $("adminCurrentVersion").textContent=d.current_version||"Unknown";
+   $("adminCurrentRevision").textContent=d.revision||"Unknown";
+   $("adminUpdateSource").textContent=d.deployment_source==="image"?"Docker registry image":"Git source build";
+   $("adminUpdateNow").textContent=d.deployment_source==="image"?"Pull & deploy image":"Build & deploy latest main";
    $("adminUpdateNow").disabled=!d.configured||d.state==="queued";
-   $("adminUpdateState").textContent=d.configured?(d.state+": "+d.message):"Updater not configured. Set Dokploy URL, Compose ID and API key in the server environment.";
+   $("adminUpdaterBadge").textContent=config.configured?"● Dokploy connected":"○ Connection needed";
+   $("adminUpdateState").textContent=d.configured?(d.state==="idle"?"Ready to request an update from Dokploy.":d.message):"Connect Beacon to your existing Dokploy service using the form below. No Compose edits are needed for the connection.";
+   $("adminDokployUrl").value=config.url||"";
+   $("adminDokployComposeId").value=config.compose_id||"";
+   $("adminDokployApiKey").value="";
+   $("adminUpdaterConfigError").textContent="";
+   $("adminUpdaterConfigStatus").textContent=config.configured?"Connected to "+config.url+" · Compose ID: "+config.compose_id+" · API key retained on server.": "Not yet configured. Enter your Dokploy URL, Compose ID, and API key.";
+   $("adminUpdaterDisconnect").disabled=config.source!=="saved";
   }
  }catch(e){adminMessage(e.message);}
 }
@@ -669,13 +677,40 @@ $("adminQuickAccounts").onclick=()=>adminTab("users");
 $("adminQuickDevices").onclick=()=>adminTab("sessions");
 $("adminQuickSettings").onclick=()=>adminTab("settings");
 $("adminUpdateRefresh").onclick=()=>adminTab("updates");
+$("adminUpdaterForm").onsubmit=async e=>{
+ e.preventDefault();
+ const button=$("adminUpdaterSave");
+ button.disabled=true;button.textContent="Verifying Dokploy…";
+ $("adminUpdaterConfigError").textContent="";
+ try{
+  const result=await api("/admin/update/config","PUT",{
+   url:$("adminDokployUrl").value.trim(),
+   compose_id:$("adminDokployComposeId").value.trim(),
+   api_key:$("adminDokployApiKey").value.trim()
+  });
+  $("adminDokployApiKey").value="";
+  toast("Dokploy connection verified and saved.","success");
+  await adminTab("updates");
+ }catch(err){$("adminUpdaterConfigError").textContent=err.message;}
+ finally{button.disabled=false;button.textContent="Verify & save connection";}
+};
+$("adminUpdaterDisconnect").onclick=async()=>{
+ if(!confirm("Disconnect Beacon from Dokploy? This removes the saved API key. Your Beacon server and messages will not be changed."))return;
+ const button=$("adminUpdaterDisconnect");button.disabled=true;
+ try{
+  await api("/admin/update/config","DELETE");
+  toast("Stored Dokploy connection removed.","success");await adminTab("updates");
+ }catch(err){$("adminUpdaterConfigError").textContent=err.message;button.disabled=false;}
+};
 $("adminUpdateNow").onclick=async()=>{
- if(!confirm("Request a Beacon server update? Dokploy may restart this server; existing data will be retained."))return;
- const btn=$("adminUpdateNow");btn.disabled=true;
+ if(!confirm("Build and deploy the latest Beacon server using the existing Dokploy service? The site may disconnect briefly. Your data volume will be retained."))return;
+ const button=$("adminUpdateNow");button.disabled=true;
+ $("adminUpdateState").textContent="Sending update request to Dokploy…";
  try{
   const result=await api("/admin/update","POST");
   $("adminUpdateState").textContent=result.message;
- }catch(err){adminMessage(err.message);btn.disabled=false;}
+  setTimeout(()=>{if(!$("adminUpdates").classList.contains("hidden"))adminTab("updates");},1800);
+ }catch(err){$("adminUpdateState").textContent=err.message;button.disabled=false;}
 };
 $("adminResetCancel").onclick=()=>$("adminResetDialog").close();
 $("adminResetForm").onsubmit=async e=>{
