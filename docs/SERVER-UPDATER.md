@@ -1,118 +1,120 @@
-# Beacon server updater (Dokploy Compose + GHCR)
+# Beacon server updater — configured entirely in the Control Center
 
-The supported destination architecture is a **prebuilt container image** pulled
-from `ghcr.io/gigabytegrove/beacon` and an administrator-only **Updates** tab in
-Beacon's own web control center.
+## Goal
 
-The original Git-build-based `compose.raw.yaml` and `compose.dokploy.yaml`
-remain available to avoid disrupting existing deployments. Only switch to
-`compose.image.yaml` **after the first image has actually been published and
-pull access verified**.
+Once an existing Beacon instance is running a release with the updater
+integration, **routine server updates happen from Beacon itself**:
 
-## How updates work
+**Control Center → Updates → Build & deploy latest main.**
 
-1. An authorized developer builds and smoke-tests a release **on a local build
-   machine**, then pushes versioned and `latest` tags to GHCR.
-2. The server runs in Dokploy with `compose.image.yaml`, containing:
-   `image: ghcr.io/gigabytegrove/beacon:${BEACON_IMAGE_TAG:-latest}` and
-   `pull_policy: always`.
-3. A signed-in Beacon **administrator** opens **Control Center → Updates** and
-   selects **Update server**.
-4. Beacon invokes Dokploy's authenticated `POST /api/compose.redeploy`.
-   Dokploy pulls the tagged image and replaces the container using the existing
-   `beacon-data` persistent volume.
-5. After reconnection, re-open Updates to verify the reported running version,
-   revision and `/health` status. A successful HTTP response to the redeploy
-   request means the command was accepted, **not** that a new image was installed.
+Do not copy/paste a new Compose file for each source update.
+Do not mount the Docker socket.
+Do not run a separate updater container.
+Do not depend on GitHub Actions or paid build runners.
 
-No Docker socket is mounted; no sidecar or external updater container is used.
-The deployment is executed by the existing Dokploy installation.
+Beacon asks **your existing Dokploy service** to redeploy through Dokploy's
+official API. Dokploy is already responsible for building/replacing the
+container. No GHCR image is required for this mode.
 
-## Publish an image (one-time initialization, then each release)
+## One-time bootstrap (required to install the updater)
 
-**No GitHub Actions or paid build infrastructure are used.**
+An older running image cannot use new source code until that code is deployed
+at least once. For a Dokploy Compose service already building
+`https://github.com/gigabytegrove/beacon.git#main`, use the existing
+Dokploy **Deploy/Rebuild** operation **once** to install Beacon 0.8.5.
 
-On an authorized local build machine with Docker Buildx, a working build engine,
-Git, and a local checkout of this repository:
+This does **not** require editing or recreating Compose when it already
+references `main`.
 
-```bash
-# Authenticate through Docker using a locally supplied token.
-# Do not paste tokens into Git, Compose files or Beacon's browser UI.
-docker login ghcr.io
+If an emergency recovery deployment is pinned to an **older commit** rather
+than `main`, that pin must be removed/updated once. A pinned source will
+continue rebuilding the pinned code regardless of the update button.
 
-git pull --ff-only origin main
-bash scripts/publish-server-image.sh 0.8.3
-```
+Preserve the existing `beacon-data` volume. **Never** choose "fresh volumes",
+run `docker compose down -v`, or recreate the persistent database volume.
 
-The publisher refuses a dirty worktree, builds a Linux image, performs an
-isolated startup/health check, and only then pushes `0.8.3` and `latest`.
-It does not publish Windows or Android clients.
+## Connect Dokploy in Beacon — no Compose environment editing
 
-**IMPORTANT:** Newly created GHCR packages default to private. Either make the
-Beacon container package public in GitHub's Package settings or configure
-Dokploy pull credentials before switching the running service from source
-build to image pull. A public repository does not automatically imply a
-public GHCR package. Verify an anonymous pull where possible:
+As a signed-in administrator:
 
-```bash
-docker pull ghcr.io/gigabytegrove/beacon:latest
-```
+1. Open **Control Center → Updates**.
+2. Under **Connect to Dokploy**, enter the **HTTPS URL** for your Dokploy
+   instance, the **Compose service ID**, and a Dokploy **API key** with access
+   to that service. Use Beacon over HTTPS when entering the API key.
+3. Click **Verify & save connection**. Beacon calls
+   `GET /api/compose.one?composeId=...` with that key and only saves a working
+   connection.
+4. The **Build & deploy latest main** button becomes enabled.
 
-If publishing has not occurred, **do not change the existing Compose service
-to `compose.image.yaml`**. It would fail to pull an absent/private image.
+Your Dokploy key is stored at
+`<BEACON_DB>.updater.json` (normally
+`/data/beacon.db.updater.json`) with mode `0600`, owned by the unprivileged
+Beacon process. It is **not sent back to the browser** and is not stored in
+the user settings database or GitHub. The persistent file survives routine
+container replacement. It is not encrypted at rest; protect volume backups
+and restrict the API key's permissions in Dokploy wherever supported.
 
-## One-time Dokploy enrollment for the in-app updater
+The connection can be changed in the same screen. Leave the key field blank
+to retain the existing key, or choose **Disconnect** to delete the saved
+connection. Existing `BEACON_DOKPLOY_*` environment variables are supported
+as an optional compatibility fallback, but **are no longer required**.
 
-Configure these values **in Dokploy's existing Compose service Environment
-editor** (not committed to GitHub, not sent through browser settings):
+Dokploy's `/api/compose.one` call verifies the key can read the target
+service; permission to actually redeploy is verified when the update request
+is submitted.
 
-- `BEACON_DOKPLOY_URL` — the HTTPS origin of your Dokploy instance (for
-  example `https://dokploy.example.net`). The container must be able to
-  resolve and reach this URL with valid TLS.
-- `BEACON_DOKPLOY_COMPOSE_ID` — the **actual Compose ID** for the existing
-  Beacon Compose service, not its display name or container ID.
-- `BEACON_DOKPLOY_API_KEY` — a Dokploy API key authorized to redeploy that
-  Compose service. Treat this as a sensitive deployment credential and limit
-  its privileges wherever Dokploy supports it.
+## Routine update
 
-The relevant Compose YAML files explicitly pass these values through
-`${BEACON_DOKPLOY_...}` environment interpolation. After saving them, perform
-**one initial manual redeploy** to activate the updater integration. Routine
-subsequent update requests can be made through the Beacon UI.
+1. Commit new Beacon source to `main` (or publish a newer image if the
+   Compose service is explicitly configured for registry images).
+2. Open **Control Center → Updates** and click **Build & deploy latest main**.
+3. Beacon requests `POST /api/compose.redeploy` with:
+   - `composeId` set to the saved Compose service
+   - `freshVolumes` set to `false`
+4. Dokploy handles the rebuild/deployment through its own pipeline. Beacon
+   may disconnect briefly as its server container is replaced.
+5. After reconnection, verify the installed version and
+   `GET /health` (should respond `{"status":"ok"}`).
 
-Do not store the API key in Beacon's `server_settings` SQLite table or in
-client-side JavaScript. Do not put it into GitHub source control.
+This button initiates the action. An accepted HTTP response does **not**
+mean the new image has finished building or is healthy. Deployment logs and
+rollback history remain available in Dokploy. Current Beacon UI does not
+yet show continuous Dokploy build-stage progress or automate rollback.
 
-## Current UX and limitations
+The updater enforces a 120-second request cooldown to reduce duplicate jobs.
+No passwords or API keys are written to logs or included in updater GET
+responses.
 
-**Control Center → Updates** is administrator-only and displays installed
-version, build revision, deployment mode, and whether the updater is configured.
-The Update server button requests a deployment via Dokploy. The server
-rate-limits requests and disables the button if required configuration is
-missing.
+## Source build versus GHCR
 
-- The page does **not yet compare the installed image with a verified latest
-  registry digest**, so clicking Update server can re-deploy the same version.
-- The page shows when Dokploy accepted a request; it does **not yet track
-  build/deployment stages or perform automatic rollback**. Verify the
-  running release after reconnection.
-- Deployment request state lives in the running process and is cleared when
-  the container is replaced.
-- A versioned image remains available for a manual rollback by adjusting
-  `BEACON_IMAGE_TAG` in Dokploy.
-- The server updater is separate from updating installed desktop EXEs and
-  Android APKs.
+Beacon can continue using the **existing public Git-source Compose build**;
+the in-app updater does not need GHCR. The optional
+[GHCR image Compose](../compose.image.yaml) only becomes usable once the
+image has **actually been published and pull-verified**.
 
-## Recovery
+The current source/build setup is fully compatible with the in-app update
+flow as long as Dokploy is configured to rebuild the current Git branch when
+`compose.redeploy` runs. Dokploy's default Docker Compose command includes
+`up -d --build`; custom deployment commands may require adjustment.
 
-If Update server reports unconfigured, verify that all three credentials are
-passed into the container; Compose environment values must be interpolated
-explicitly. If Dokploy rejects a request, check the Compose ID and API-key
-authorization. If the new container does not become healthy, use the existing
-Dokploy Deployments/Logs UI to inspect the failure and restore the previous
-known-good versioned image, preserving the `beacon-data` volume.
+**Do not switch to the GHCR Compose file until an image exists.**
 
-**Never use Docker Compose's down-volume option or remove the named volume.**
+## Troubleshooting
 
-- Dokploy API: https://docs.dokploy.com/docs/api/compose
-- GHCR package access: https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry
+- **Cannot verify Dokploy:** use a valid HTTPS origin reachable from inside
+  the Beacon container with a trusted certificate. HTTPS is mandatory for
+  the stored integration. Check that the API key can read the Compose
+  service by its actual ID.
+- **Update rejected:** check API-key deployment permissions and Dokploy's
+  application deployments/logs.
+- **Old version keeps returning:** check that Dokploy builds `main` and is
+  not pinned to a recovery commit. Confirm no custom Compose command skips
+  rebuilding.
+- **Database or user accounts missing:** STOP and investigate which volume
+  the service mounted before changing anything. Do not initialize or delete
+  volumes as a workaround.
+
+Official Dokploy references:
+
+- https://docs.dokploy.com/docs/api/compose
+- https://docs.dokploy.com/docs/core/docker-compose
