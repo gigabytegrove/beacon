@@ -141,6 +141,18 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 .admin-settings-actions{display:flex;align-items:center;gap:15px;flex-wrap:wrap;border-top:1px solid #e1eaf5;padding-top:20px}
 #admin .admin-settings-actions button{padding:11px 22px}
 
+
+.update-summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:12px;margin:16px 0}
+.update-summary-grid>div{padding:16px;background:#f5f9ff;border:1px solid #e0eaf6;border-radius:12px;min-width:0}
+.update-summary-grid small{display:block;color:#67809d;font-size:11px;font-weight:750;text-transform:uppercase;letter-spacing:.045em}
+.update-summary-grid strong{display:block;margin-top:9px;color:#142e4e;font-size:16px;word-break:break-word}
+#adminUpdates .admin-section-actions{margin:18px 0 12px}
+#adminUpdates .admin-section-actions button{font-weight:650}
+#adminUpdates .update-help{line-height:1.55;font-size:12px;max-width:820px;margin-top:13px}
+#adminUpdates .admin-settings-form{max-width:720px}
+#adminUpdaterConfigStatus{padding:12px 14px;background:#f4f8fd;border:1px solid #dae7f6;border-radius:9px;font-size:12px;line-height:1.6}
+#adminUpdaterConfigError:not(:empty){padding:11px;background:#fff1f2;border:1px solid #f5c7cc;border-radius:9px}
+
 @media(max-width:600px){.admin-body{padding:14px}.admin-top{padding:12px}}
 </style></head>
 <body>
@@ -236,19 +248,52 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
     <div class="admin-settings-actions"><button id="adminSaveSettings" type="submit" class="admin-primary">Save changes</button><span class="muted">No restart required.</span></div>
    </form>
   </section>
-<section id="adminUpdates" class="admin-section admin-card hidden">
-   <h2>Server updates</h2>
-   <p class="muted">Updates are requested through Dokploy. Beacon does not mount the Docker socket.</p>
-   <p><strong>Installed version:</strong> <span id="adminCurrentVersion">Checking…</span></p>
-   <p><strong>Revision:</strong> <span id="adminCurrentRevision">Checking…</span></p>
-   <p><strong>Deployment source:</strong> <span id="adminUpdateSource">Checking…</span></p>
-   <p id="adminUpdateState" role="status" aria-live="polite"></p>
-   <div style="display:flex;gap:12px;flex-wrap:wrap">
-    <button id="adminUpdateNow" class="admin-primary" type="button">Update server</button>
-    <button id="adminUpdateRefresh" type="button">Refresh status</button>
+<section id="adminUpdates" class="admin-section hidden">
+  <div class="admin-card">
+   <div class="admin-section-header">
+    <div><p class="admin-eyebrow">Release management</p><h2>Server updates</h2>
+     <p class="muted">Update Beacon here. Dokploy replaces the server without another Compose edit.</p></div>
+    <span id="adminUpdaterBadge" class="role-pill">Checking connection…</span>
    </div>
-   <p class="muted">Dokploy accepting a request does not confirm installation. Verify the version and health after restart. Existing data volumes are retained.</p>
-  </section>
+   <div class="update-summary-grid">
+    <div><small>Installed version</small><strong id="adminCurrentVersion">Checking…</strong></div>
+    <div><small>Build revision</small><strong id="adminCurrentRevision">Checking…</strong></div>
+    <div><small>Deployment method</small><strong id="adminUpdateSource">Checking…</strong></div>
+   </div>
+   <p id="adminUpdateState" class="admin-info-line" role="status" aria-live="polite">Checking update status…</p>
+   <div class="admin-section-actions">
+    <button id="adminUpdateNow" class="admin-primary" type="button" disabled>Deploy latest Beacon</button>
+    <button id="adminUpdateRefresh" type="button" class="admin-secondary">Refresh status</button>
+   </div>
+   <p class="muted update-help">Dokploy builds from the existing source configuration or pulls its configured image. Your database volume is preserved. An accepted update request does not guarantee the new version is healthy.</p>
+  </div>
+  <div class="admin-card">
+   <div class="admin-section-header">
+    <div><p class="admin-eyebrow">One-time connection</p><h2>Connect to Dokploy</h2>
+     <p class="muted">Set this up once inside Beacon. Future releases update from the button above.</p></div>
+   </div>
+   <form id="adminUpdaterForm" class="admin-settings-form">
+    <label>Dokploy HTTPS address
+     <input id="adminDokployUrl" type="url" placeholder="https://dokploy.example.com" autocomplete="url" maxlength="512" required>
+     <span class="form-help">Use an address reachable from the Beacon container, with a trusted HTTPS certificate.</span>
+    </label>
+    <label>Compose service ID
+     <input id="adminDokployComposeId" type="text" maxlength="128" autocomplete="off" spellcheck="false" required placeholder="Compose ID from Dokploy">
+     <span class="form-help">Use the Dokploy Compose service ID, not its name or container ID.</span>
+    </label>
+    <label>Dokploy API key
+     <input id="adminDokployApiKey" type="password" maxlength="2048" autocomplete="new-password" placeholder="Leave blank to keep the saved key">
+     <span class="form-help">Stored only in the server's protected persistent data directory. Never returned to the browser or committed to GitHub.</span>
+    </label>
+    <p id="adminUpdaterConfigError" class="error" role="alert" aria-live="polite"></p>
+    <p id="adminUpdaterConfigStatus" class="muted" role="status" aria-live="polite">No connection saved.</p>
+    <div class="admin-settings-actions">
+     <button id="adminUpdaterSave" type="submit" class="admin-primary">Verify &amp; save connection</button>
+     <button id="adminUpdaterDisconnect" type="button" class="admin-secondary" disabled>Disconnect</button>
+    </div>
+   </form>
+  </div>
+ </section>
  </div>
 </section>
 <dialog id="adminResetDialog"><h2>Reset account password</h2><p id="adminResetTarget" class="muted"></p>
