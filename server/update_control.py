@@ -301,6 +301,7 @@ def register(app, *, administrator):
             "available": latest if latest else None,
             "state": status.get("state", "idle"),
             "message": status.get("message", "Ready to check GitHub for updates."),
+            "last_failure": status.get("last_failure", ""),
             "updated_at": status.get("updated_at"),
             "busy": _busy(),
             "can_rollback": bool(previous and (root / "releases" / previous).exists())
