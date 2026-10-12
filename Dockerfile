@@ -1,5 +1,5 @@
 FROM python:3.12-slim
-ARG BEACON_VERSION=0.8.5
+ARG BEACON_VERSION=0.9.0
 ARG BEACON_REVISION=unknown
 LABEL org.opencontainers.image.title="Beacon Messenger" \
       org.opencontainers.image.source="https://github.com/gigabytegrove/beacon" \
@@ -13,4 +13,4 @@ RUN pip install --no-cache-dir -r requirements.txt && useradd -r -u 10001 -m bea
 COPY server ./server
 USER beacon
 EXPOSE 8765
-CMD ["uvicorn", "server.main:app", "--host", "0.0.0.0", "--port", "8765", "--no-proxy-headers"]
+CMD ["python", "-m", "server.launcher"]
