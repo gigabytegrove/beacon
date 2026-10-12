@@ -70,3 +70,10 @@ GitHub's Windows/Linux workflows can now target registered Windows/Linux self-ho
 The Go client now retrieves persisted message events by monotonic ID, starting from the account's latest message ID at login. Each successful poll advances a per-session local cursor; later polls catch up on events missed during a LAN outage. Notifications are grouped by buddy, observe mute settings and can open an IM automatically if enabled. Unread badge counts remain server-managed and **do not drive message delivery**.
 
 When an IM is open, incoming history is displayed first, then the client sends a read receipt; closing the window mid-request does not mark undisplayed messages read. The event transport tests have passed locally with Go's race detector, but this is **not yet a verified Fyne GUI build**. See [Multi-device Delivery](../../docs/MULTI-DEVICE-DELIVERY.md).
+
+
+## Actual premium Go/Fyne client integration
+
+The shared flat palette and theme are in cmd/beacon/brand.go, used by the supported Go/Fyne Windows and Linux client through Settings().SetTheme. The branded sign-in and buddy list render from the existing main.go with approved Beacon icon, primary controls, user status, live buddy filter, presence cards and empty states. Chats use differentiated outgoing/incoming message cards while preserving send, typing, read state and search behavior.
+
+The separately compiled Go/Win32 and Go/X11 premium previews remain reference test builds, not this full Go/Fyne application. Fyne native builds and platform runtime acceptance tests are still required. End users will not need Go, Python or the Fyne SDK to run a successfully compiled binary.

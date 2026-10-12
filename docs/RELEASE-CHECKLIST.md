@@ -116,3 +116,14 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] Primary Go/Fyne desktop preserves full preexisting functionality while adopting premium branding.
 - [ ] No temporary screenshot/template placeholder data appear as real contacts or conversations.
 - [ ] All desktop feature-parity checks pass before making a premium preview the default.
+
+
+## Premium full-client acceptance gates
+
+- [ ] Build full Go/Fyne Windows EXE from clients/desktop-go and launch it on Windows; do not accept the limited native-preview executable as equivalent.
+- [ ] Build full Go/Fyne Linux archive, launch on an actual supported desktop, and verify the real brand theme, buddy list, profile, devices, IM search, notifications and background operation.
+- [ ] Verify dark text on white panels, visible focus, proper presence/away/busy indicator colors, empty states, scroll behavior and message alignment.
+- [ ] Build the real Android v0.8.0 APK with Gradle and validate that all 14 premium resources package correctly.
+- [ ] Install Android APK and verify sign-in, buddy/photo rendering, message bubbles, notification-to-chat navigation, device revocation and background monitor.
+- [ ] Confirm existing SQLite volume, Dokploy Compose deployment and concurrent Windows/Linux/Android logins remain intact.
+- [ ] Do not claim a verified release from structural source checks or from the previously built limited Win32/X11 preview binaries.

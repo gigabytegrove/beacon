@@ -9,6 +9,7 @@ import (
  "fyne.io/fyne/v2"
  "fyne.io/fyne/v2/container"
  "fyne.io/fyne/v2/dialog"
+ "fyne.io/fyne/v2/layout"
  "fyne.io/fyne/v2/widget"
  "github.com/gigabytegrove/beacon/clients/desktop-go/internal/beacon"
 )
@@ -18,7 +19,7 @@ type Chat struct{
  peer beacon.Buddy
  client *beacon.Client
  mine int
- history *widget.Label
+ history *fyne.Container
  typing *widget.Label
  scroll *container.Scroll
  input *widget.Entry
@@ -36,8 +37,7 @@ func(u *UI) openChat(peer beacon.Buddy){
  win.Resize(fyne.NewSize(540,610))
  title:=widget.NewLabelWithStyle(peer.Name(),fyne.TextAlignLeading,fyne.TextStyle{Bold:true})
  online:=widget.NewLabel(peer.Presence+" · "+peer.StatusText)
- transcript:=widget.NewLabel("Loading your conversation…")
- transcript.Wrapping=fyne.TextWrapWord
+ transcript:=container.NewVBox(widget.NewLabel("Loading your conversation…"))
  scroll:=container.NewVScroll(transcript)
  writing:=widget.NewLabel("")
  input:=widget.NewMultiLineEntry();input.SetPlaceHolder("Type your message…")
@@ -64,9 +64,12 @@ func(u *UI) openChat(peer beacon.Buddy){
   })
  }
  search:=widget.NewButton("Search history",func(){u.searchChat(chat)})
- header:=container.NewVBox(title,online,search)
- footer:=container.NewVBox(writing,input,widget.NewButton("Send IM",send))
- win.SetContent(container.NewBorder(header,footer,nil,nil,scroll))
+ heading:=container.NewBorder(nil,nil,buddyAvatar(peer),nil,container.NewVBox(title,online))
+ header:=container.NewVBox(heading,widget.NewSeparator(),search)
+ submit:=widget.NewButton("Send message",send)
+ submit.Importance=widget.HighImportance
+ footer:=container.NewVBox(writing,input,submit)
+ win.SetContent(container.NewPadded(container.NewBorder(header,footer,nil,nil,scroll)))
  win.SetOnClosed(func(){close(chat.stop);delete(u.chats,peer.ID)})
  u.chats[peer.ID]=chat
  win.Show()
@@ -89,15 +92,8 @@ func(ch *Chat) load(u *UI){
  // on the UI thread, never while a network request is still in flight.
  cancel()
  if err!=nil{fyne.Do(func(){if u.api==ch.client{ch.typing.SetText("Network error: "+err.Error())}});return}
- var output strings.Builder
- for _,m:=range items{
-  who:=ch.peer.Name()
-  if m.SenderID==ch.mine{who="You"}
-  output.WriteString(fmt.Sprintf("%s · %s\n%s\n\n",who,time.Unix(m.CreatedAt,0).Format("Jan 2, 15:04"),m.Body))
- }
- if output.Len()==0{output.WriteString("No messages yet. Say hello!")}
- final:=output.String()
- latest:=0;if len(items)>0{latest=items[len(items)-1].ID}
+ latest:=0
+ if len(items)>0{latest=items[len(items)-1].ID}
  latestIncoming:=0
  for _,m:=range items {
   if m.SenderID==ch.peer.ID && m.ID>latestIncoming {latestIncoming=m.ID}
@@ -105,7 +101,25 @@ func(ch *Chat) load(u *UI){
  fyne.Do(func(){
   if u.api!=ch.client || u.chats[ch.peer.ID]!=ch{return}
   if latest!=ch.lastID||ch.lastID==0 {
-   ch.history.SetText(final)
+   ch.history.RemoveAll()
+   if len(items)==0{
+    ch.history.Add(widget.NewCard("No messages yet","Say hello and start the conversation.",widget.NewLabel("Your private messages appear here.")))
+   }
+   for _,message:=range items{
+    who:=ch.peer.Name()
+    mine:=message.SenderID==ch.mine
+    if mine{who="You"}
+    timestamp:=time.Unix(message.CreatedAt,0).Format("Jan 2, 15:04")
+    text:=widget.NewLabel(message.Body)
+    text.Wrapping=fyne.TextWrapWord
+    bubble:=widget.NewCard(who+"  ·  "+timestamp,"",text)
+    if mine{
+     ch.history.Add(container.NewHBox(layout.NewSpacer(),bubble))
+    }else{
+     ch.history.Add(container.NewHBox(bubble,layout.NewSpacer()))
+    }
+   }
+   ch.history.Refresh()
    ch.lastID=latest
    ch.scroll.ScrollToBottom()
   }

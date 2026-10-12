@@ -1,5 +1,15 @@
 # Beacon changelog
 
+## 0.8.0 — Branded primary-client integration (build verification pending)
+
+- Applied Beacon's approved navy, electric-blue and light-surface visual system to the supported Go/Fyne desktop source, including logo and theme, login card, readable errors, persisted nonsecret server address, buddy filtering, presence cards and individual IM message cards.
+- Moved all 14 approved premium Android resource files into the actual app module and activated BeaconTheme in AndroidManifest.
+- Updated the actual Java Activity's login, inputs, buddy rows and incoming/outgoing message bubbles to use the integrated resources, without replacing its messenger, background-monitor, session or account logic.
+- Advanced Android source, local builder, workflow and source tests to 0.8.0 / versionCode 8. Updated release and client docs alongside the code.
+- Preserved the full-featured Go/Fyne codebase and the separate reduced-feature Win32/X11 premium preview, avoiding silent feature removal.
+- Full Go/Fyne and Android SDK builds remain UNVERIFIED until a matching build host actually compiles, installs and executes them.
+
+
 ## 2026-10-11 premium native UI preview import
 
 - Imported the locally built premium Go/Win32 + Go/X11 Windows/Linux visual preview as an **independent source module**, without replacing the full-featured Go/Fyne desktop application.

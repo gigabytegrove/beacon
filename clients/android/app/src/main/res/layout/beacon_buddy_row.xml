@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+  android:layout_width="match_parent" android:layout_height="64dp"
+  android:orientation="horizontal" android:gravity="center_vertical"
+  android:paddingLeft="14dp" android:paddingRight="12dp"
+  android:background="@drawable/beacon_buddy_row_background">
+  <FrameLayout android:layout_width="42dp" android:layout_height="42dp">
+    <ImageView android:id="@+id/beaconBuddyAvatar" android:layout_width="42dp"
+      android:layout_height="42dp" android:contentDescription="Buddy avatar"/>
+    <View android:id="@+id/beaconPresenceDot" android:layout_width="10dp"
+      android:layout_height="10dp" android:layout_gravity="bottom|right"
+      android:background="@drawable/beacon_presence_available"/>
+  </FrameLayout>
+  <LinearLayout android:layout_width="0dp" android:layout_weight="1"
+    android:layout_height="wrap_content" android:orientation="vertical"
+    android:paddingLeft="12dp">
+    <TextView android:id="@+id/beaconBuddyName" style="@style/BeaconBuddyTitle"
+      android:layout_width="match_parent" android:layout_height="wrap_content"
+      android:singleLine="true" android:ellipsize="end"/>
+    <TextView android:id="@+id/beaconBuddyStatus" android:layout_width="match_parent"
+      android:layout_height="wrap_content" android:layout_marginTop="3dp"
+      android:textColor="@color/beacon_muted" android:textSize="12sp"
+      android:singleLine="true" android:ellipsize="end"/>
+  </LinearLayout>
+  <TextView android:id="@+id/beaconUnreadBadge" android:layout_width="wrap_content"
+    android:layout_height="30dp" android:gravity="center"
+    android:minWidth="30dp" android:paddingLeft="8dp" android:paddingRight="8dp"
+    android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold"
+    android:background="@drawable/beacon_primary"/>
+</LinearLayout>

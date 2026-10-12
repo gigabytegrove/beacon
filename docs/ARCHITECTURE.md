@@ -75,3 +75,10 @@ Go `internal/beacon/sync.go` validates and delivers message history incrementall
 The Go and Android chat renderers now acknowledge read state **after** inserting incoming messages into the active conversation. Android deduplicates in-flight read IDs per buddy. Neither an event catch-up nor Android background monitoring marks messages read by itself. The existing Docker server remains single-container Python/FastAPI with SQLite durability; no separate push service or message broker is introduced.
 
 Full semantics and acceptance tests: [Multi-device Delivery](MULTI-DEVICE-DELIVERY.md).
+
+
+## Approved design applied to supported client code
+
+The primary Go/Fyne desktop sources share a flat theme in clients/desktop-go/cmd/beacon/brand.go and reuse the existing secure auth, groups, session/device controls and message delivery. Styling is implemented through Fyne widgets and theme tokens rather than full-window raster images; the separate Win32/X11 premium preview is retained only for comparison.
+
+Android now includes the approved resources in clients/android/app/src/main/res, uses @style/BeaconTheme as the application theme, and sets actual Java-created login, roster and conversation widgets to match. The native networking, Keystore session encryption and optional foreground service are unchanged.

@@ -36,8 +36,8 @@ def test_versions_and_server_registration():
     workflow = (ROOT / ".github/workflows/windows.yml").read_text()
     linux = (ROOT / ".github/workflows/linux.yml").read_text()
     assert 'version="0.8.0"' in main
-    assert "versionName '0.7.0'" in android
-    assert "versionCode 7" in android
+    assert "versionName '0.8.0'" in android
+    assert "versionCode 8" in android
     assert "Beacon-Windows-0.8.0.exe" in workflow
     assert "Beacon-Linux-0.8.0.tar.gz" in linux
     assert '@app.get("/api/messages/search")' in main
@@ -136,3 +136,16 @@ def test_multi_device_event_cursor_and_display_read_contract():
     assert "MarkRead(requestCtx,ch.peer.ID,id)" in chat
     assert "markRenderedConversationRead(snap.peer, snap.messages);" in android
     assert "displayedReadCursors" in android
+
+
+def test_go_native_primary_client_integrates_premium_brand():
+    folder = ROOT / "clients/desktop-go/cmd/beacon"
+    main = (folder / "main.go").read_text()
+    chat = (folder / "chat.go").read_text()
+    brand = (folder / "brand.go").read_text()
+    assert "Settings().SetTheme(beaconTheme{" in main
+    assert "beaconHeader(" in main
+    assert "Search your buddies" in main
+    assert "No buddies to show" in main
+    assert "layout.NewSpacer()" in chat
+    assert "type beaconTheme struct" in brand

@@ -11,7 +11,7 @@
         android:roundIcon="@drawable/ic_beacon"
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:theme="@style/BeaconTheme">
         <service
             android:name=".BeaconMonitorService"
             android:exported="false"

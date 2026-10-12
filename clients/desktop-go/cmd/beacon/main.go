@@ -26,6 +26,7 @@ import (
  "fyne.io/fyne/v2/dialog"
  "fyne.io/fyne/v2/driver/desktop"
  "fyne.io/fyne/v2/widget"
+ "fyne.io/fyne/v2/theme"
  "github.com/zalando/go-keyring"
  "github.com/gigabytegrove/beacon/clients/desktop-go/internal/beacon"
 )
@@ -55,6 +56,7 @@ type UI struct{
  api *beacon.Client
  me beacon.User
  roster *fyne.Container
+ filter string
  title *widget.Label
  network *widget.Label
  buddies []beacon.Buddy
@@ -67,10 +69,11 @@ type UI struct{
 }
 func main(){
  a:=app.NewWithID("net.gigabytegrove.beacon")
+ a.Settings().SetTheme(beaconTheme{Theme:theme.DefaultTheme()})
  a.SetIcon(&fyne.StaticResource{StaticName:"beacon.svg",StaticContent:iconBytes})
  ui:=&UI{app:a,root:a.NewWindow("Beacon · Buddy List"),chats:map[int]*Chat{}}
  ui.status.Store("available")
- ui.root.Resize(fyne.NewSize(375,670))
+ ui.root.Resize(fyne.NewSize(450,710))
  ui.showLogin()
  ui.root.Show()
  go ui.restoreStored()
@@ -79,35 +82,66 @@ func main(){
 func(u *UI) async(task func(context.Context)error,after func(error)){
  go func(){ctx,cancel:=ctx();defer cancel();err:=task(ctx);fyne.Do(func(){after(err)})}()
 }
-func(u *UI) alert(err error){if err!=nil{dialog.ShowError(err,u.root)}}
+func(u *UI) alert(err error){if err!=nil{dialog.ShowError(errors.New(noticeText(err)),u.root)}}
 func(u *UI) showLogin(){
- address:=widget.NewEntry();address.SetPlaceHolder("https://beacon.example.com or http://LAN-IP:8765")
- account:=widget.NewEntry();account.SetPlaceHolder("Username")
- password:=widget.NewPasswordEntry();password.SetPlaceHolder("Password")
+ address:=widget.NewEntry()
+ address.SetPlaceHolder("https://beacon.example.com or http://LAN-IP:8765")
+ address.SetText(u.app.Preferences().StringWithFallback("lastServer",""))
+ account:=widget.NewEntry();account.SetPlaceHolder("Your username")
+ password:=widget.NewPasswordEntry();password.SetPlaceHolder("Your password")
  host,_:=os.Hostname();device:=widget.NewEntry();device.SetText("Beacon-"+runtime.GOOS+"-"+host)
- remember:=widget.NewCheck("Remember this device securely (Windows Credential Manager / Linux Secret Service)",nil)
+ remember:=widget.NewCheck("Keep me signed in using my device's secure credential vault",nil)
  remember.SetChecked(false)
- info:=widget.NewLabel("Sign in to your self-hosted Beacon messenger.")
- info.Wrapping=fyne.TextWrapWord
- submit:=widget.NewButton("Sign in",func(){
-  client,err:=beacon.NewClient(address.Text);if err!=nil{u.alert(err);return}
-  if account.Text==""||password.Text==""||device.Text==""{dialog.ShowInformation("Missing information","Please enter a username, password and device name.",u.root);return}
+ inline:=widget.NewLabel("")
+ inline.Wrapping=fyne.TextWrapWord
+ submit:=widget.NewButton("Sign in to Beacon",nil)
+ submit.Importance=widget.HighImportance
+ submit.OnTapped=func(){
+  client,err:=beacon.NewClient(address.Text)
+  if err!=nil{inline.SetText(noticeText(err));return}
+  if strings.TrimSpace(account.Text)==""||password.Text==""||strings.TrimSpace(device.Text)==""{
+   inline.SetText("Enter your server address, username, password and device name.")
+   return
+  }
+  inline.SetText("Connecting securely to your Beacon server…")
+  submit.Disable()
   username,pass,deviceName,save:=account.Text,password.Text,device.Text,remember.Checked
   u.async(func(c context.Context)error{
-   result,e:=client.Login(c,username,pass,deviceName);if e!=nil{return e}
-   if save{if e=saveLogin(client.Server(),result.Token);e!=nil{ // login still succeeds; user is informed
-     fyne.Do(func(){dialog.ShowInformation("Secure storage unavailable","Signed in, but the OS credential vault is unavailable. You'll sign in again next launch.",u.root)})
-   }}else{clearLogin()}
-   fyne.Do(func(){u.signedIn(client,result.User)})
+   result,e:=client.Login(c,username,pass,deviceName)
+   if e!=nil{return e}
+   if save {
+    if e=saveLogin(client.Server(),result.Token);e!=nil{
+     fyne.Do(func(){dialog.ShowInformation("Secure storage unavailable","Signed in, but your OS credential vault is unavailable. You will need to sign in next time.",u.root)})
+    }
+   }else{clearLogin()}
+   fyne.Do(func(){
+    u.app.Preferences().SetString("lastServer",client.Server())
+    u.signedIn(client,result.User)
+   })
    return nil
-  },u.alert)
- })
+  },func(err error){
+   if err!=nil{submit.Enable();inline.SetText(noticeText(err))}
+  })
+ }
+ password.OnSubmitted=func(string){submit.OnTapped()}
+ details:=widget.NewAccordion(widget.NewAccordionItem("Advanced connection options",widget.NewForm(
+  widget.NewFormItem("Device name",device))))
+ form:=container.NewVBox(
+  sectionHeading("Welcome back","Sign in and pick up where your conversations left off."),
+  widget.NewForm(widget.NewFormItem("Server address",address),
+   widget.NewFormItem("Username",account),
+   widget.NewFormItem("Password",password)),
+  details,remember,inline,submit,
+ )
+ card:=widget.NewCard("SIGN IN","",form)
+ hint:=widget.NewLabel("No cloud account required. Connect directly to your own Dokploy server. Use HTTPS outside your trusted LAN.")
+ hint.Wrapping=fyne.TextWrapWord
  u.root.SetContent(container.NewPadded(container.NewVBox(
-  widget.NewLabelWithStyle("◉ BEACON",fyne.TextAlignCenter,fyne.TextStyle{Bold:true}),
-  info,widget.NewForm(widget.NewFormItem("Server",address),widget.NewFormItem("Username",account),
-   widget.NewFormItem("Password",password),widget.NewFormItem("Device",device)),remember,submit,
-  widget.NewLabel("Use HTTPS when connecting outside a trusted LAN."),
+  beaconHeader("Your people. Your network."),
+  widget.NewSeparator(),card,hint,
+  widget.NewLabel("BEACON MESSENGER  •  SELF-HOSTED  •  NATIVE GO"),
  )))
+ u.root.SetTitle("Beacon Messenger · Sign In")
 }
 func(u *UI) restoreStored(){
  s,err:=restoreLogin();if err!=nil||s.Server==""||s.Token==""{return}
@@ -143,32 +177,39 @@ func(u *UI) enableTray(){
  }
 }
 func(u *UI) showRoster(){
- u.title=widget.NewLabelWithStyle("◉ Beacon",fyne.TextAlignLeading,fyne.TextStyle{Bold:true})
- u.network=widget.NewLabel("Connecting to your server…")
+ u.title=widget.NewLabelWithStyle("Buddy list",fyne.TextAlignLeading,fyne.TextStyle{Bold:true})
+ u.network=widget.NewLabel("Connecting to your Beacon server…")
+ u.network.Wrapping=fyne.TextWrapWord
  u.roster=container.NewVBox()
  presence:=widget.NewSelect([]string{"available","away","busy"},func(s string){
   if s==""||u.api==nil{return}
-  u.status.Store(s);client:=u.api;u.async(func(c context.Context)error{return client.Presence(c,s)},u.alert)
+  u.status.Store(s)
+  client:=u.api;u.async(func(c context.Context)error{return client.Presence(c,s)},u.alert)
  })
  presence.SetSelected("available")
- header:=container.NewVBox(u.title,widget.NewLabel(u.me.DisplayName+" · "+u.me.Username),u.network)
+ search:=widget.NewEntry()
+ search.SetPlaceHolder("Search your buddies…")
+ search.OnChanged=func(value string){u.filter=value;u.drawRoster()}
  controls:=container.NewGridWithColumns(3,
   widget.NewButton("+ Buddy",u.addBuddy),
   widget.NewButton("+ Group",u.manageGroups),
-  widget.NewButton("My Profile",u.editProfile))
+  widget.NewButton("Profile",u.editProfile))
+ profile:=widget.NewCard(u.me.DisplayName,"@"+u.me.Username,container.NewVBox(
+  widget.NewLabel("Current presence"),presence,search))
  extras:=container.NewGridWithColumns(2,
-  widget.NewButton("Profile Photo",u.uploadPhoto),
-  widget.NewButton("Change Password",u.changePassword))
+  widget.NewButton("Update photo",u.uploadPhoto),
+  widget.NewButton("Change password",u.changePassword))
  footer:=container.NewGridWithColumns(3,
   widget.NewButton("Devices",u.showSessions),
-  widget.NewButton("Preferences",u.showPreferences),
-  widget.NewButton("Sign Out",u.logout))
- if u.me.IsAdmin {header.Add(widget.NewButton("Create user account",u.createUser))}
- u.root.SetContent(container.NewBorder(
-  container.NewVBox(header,presence,controls,extras),
-  footer,nil,nil,container.NewVScroll(u.roster),
- ))
- u.root.SetTitle("Beacon · Buddy List")
+  widget.NewButton("Settings",u.showPreferences),
+  widget.NewButton("Sign out",u.logout))
+ header:=container.NewVBox(beaconHeader("Your people. Your network."),profile,controls,extras)
+ if bool(u.me.IsAdmin){header.Add(widget.NewButton("Create user account",u.createUser))}
+ u.root.SetContent(container.NewPadded(container.NewBorder(
+  header,container.NewVBox(widget.NewSeparator(),u.network,footer),
+  nil,nil,container.NewVScroll(u.roster),
+ )))
+ u.root.SetTitle("Beacon Messenger · Buddy List")
 }
 func(u *UI) startPolling(){
  stop:=make(chan struct{});u.pollStop=stop
@@ -262,6 +303,10 @@ func(u *UI) applyRoster(newBuddies []beacon.Buddy,newGroups []beacon.Group){
  if u.network!=nil{u.network.SetText("● Connected to "+u.api.Server())}
  // Preserve scroll position and avoid allocating hundreds of widgets on every poll.
  if unchanged{return}
+ u.drawRoster()
+}
+func(u *UI) drawRoster(){
+ if u.roster==nil{return}
  u.roster.RemoveAll()
  sorted:=append([]beacon.Buddy(nil),newBuddies...)
  sort.Slice(sorted,func(i,j int)bool{
@@ -275,25 +320,32 @@ func(u *UI) applyRoster(newBuddies []beacon.Buddy,newGroups []beacon.Group){
   var peers []beacon.Buddy
   online:=0
   for _,b:=range sorted{
+   if u.filter!="" && !strings.Contains(strings.ToLower(b.Name()+" "+b.StatusText),strings.ToLower(u.filter)){continue}
    id:=0;if b.GroupID!=nil{id=*b.GroupID}
    if id==g.ID{peers=append(peers,b);if b.Presence!="offline"{online++}}
   }
   if len(peers)==0&&g.ID==0&&len(newGroups)>0{continue}
-  u.roster.Add(widget.NewLabelWithStyle(fmt.Sprintf("%s (%d online / %d)",g.Name,online,len(peers)),
+  if len(peers)==0 {continue}
+  u.roster.Add(widget.NewLabelWithStyle(fmt.Sprintf("%s  ·  %d online / %d buddies",g.Name,online,len(peers)),
    fyne.TextAlignLeading,fyne.TextStyle{Bold:true}))
   for _,b:=range peers{
    buddy:=b
-   mark:="○";if b.Presence=="available"{mark="●"}else if b.Presence!="offline"{mark="◐"}
-   name:=fmt.Sprintf("%s %s",mark,b.Name())
+   name:=b.Name()
    if b.UnreadCount>0{name+=fmt.Sprintf("  [%d]",b.UnreadCount)}
    if b.Muted{name+="  🔕"}
-   label:=widget.NewLabel(name+"\n"+b.StatusText)
-   label.Wrapping=fyne.TextWrapWord
-   row:=container.NewBorder(nil,nil,buddyAvatar(b),container.NewHBox(
-    widget.NewButton("IM",func(){u.openChat(buddy)}),
-    widget.NewButton("⋯",func(){u.buddySettings(buddy)})),label)
+   label:=widget.NewLabelWithStyle(name,fyne.TextAlignLeading,fyne.TextStyle{Bold:true})
+   subtitle:=widget.NewLabel(b.StatusText)
+   if subtitle.Text==""{subtitle.SetText(strings.ToUpper(b.Presence))}
+   subtitle.Wrapping=fyne.TextWrapWord
+   body:=container.NewBorder(nil,nil,presenceDot(b.Presence),nil,container.NewVBox(label,subtitle))
+   row:=widget.NewCard("","",container.NewBorder(nil,nil,buddyAvatar(b),container.NewHBox(
+    widget.NewButton("Message",func(){u.openChat(buddy)}),
+    widget.NewButton("⋯",func(){u.buddySettings(buddy)})),body))
    u.roster.Add(row)
   }
+ }
+ if len(u.roster.Objects)==0 {
+  u.roster.Add(widget.NewCard("No buddies to show","Your conversations will appear here.",widget.NewButton("Add a buddy",u.addBuddy)))
  }
  u.roster.Refresh()
 }

@@ -103,3 +103,10 @@ This **only verifies the Go API package**, not the Fyne windows or Android APK. 
 `clients/desktop-native-preview` contains the Go standard-library/native-OS graphics prototype with actual local test builds in `releases/previews/2026-10-11`. It is **not the same Go module** as the primary `clients/desktop-go` Fyne app; do not splice their dependencies or build paths together. Its generated raster assets and Android design files are kept as reproducible source/visual references. See [Preview docs](PREMIUM-PREVIEW.md) and [building instructions](../clients/desktop-native-preview/BUILDING.md).
 
 The preview test artifacts were built locally without GitHub Actions; historical GitHub runner failures are separate and still unresolved. No tests or compilation of the primary Go/Fyne or Android APK should be marked passing on the strength of the preview's own successful smoke tests.
+
+
+## Premium client code review and verification
+
+The Go/Fyne brand source is clients/desktop-go/cmd/beacon/brand.go, with login/roster updates in main.go and conversation card rendering in chat.go. The Android premium kit files were copied to the actual app module and referenced in MainActivity and AndroidManifest. Structural tests in test_repository_contract.py and test_android_sources.py guard source integration and XML validity.
+
+Full Fyne and Gradle compilation must still execute on internet-enabled platform build hosts; structural tests do not certify a runnable APK or full-featured desktop executable. The independently compiled Win32/X11 premium prototype does not replace the primary applications.

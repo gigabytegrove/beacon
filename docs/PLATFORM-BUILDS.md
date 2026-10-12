@@ -63,3 +63,7 @@ When GitHub-hosted runners fail before any command runs, use the **same workflow
 The repository also contains **separately labeled premium Go Win32/X11 test clients** in `releases/previews/2026-10-11/`, with source in `clients/desktop-native-preview`. The Windows preview is packaged as a ZIP containing an EXE; the Linux preview is a tar.gz. Their checksums are listed in the preview directory and verified in tests.
 
 This preview is **not** the same application as the full Go/Fyne primary release target described above. Build it independently using [BUILDING.md](../clients/desktop-native-preview/BUILDING.md). It compiles using native platform APIs without bundling Python or third-party Go dependencies. Windows runtime and Android APK verification remain outstanding.
+
+
+## Premium full-client build expectations
+The full Go/Fyne client now includes Beacon-branded theme, sign-in, roster and message cards. The separately compiled native Win32/X11 preview is not feature-equivalent to Fyne and cannot substitute for an accepted desktop build. Android source has BeaconTheme and all fourteen UI resources integrated in the actual application (v0.8.0); build the real APK before distributing it.
