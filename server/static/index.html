@@ -162,10 +162,10 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
   <p class="muted">Create your first administrator. No default password and no cloud account required.</p>
   <div class="setup-help">
     <strong>Step 1 · Get your one-time setup code</strong>
-    <p>Open your Beacon service in <b>Dokploy → Logs</b>. Find <b>BEACON FIRST-RUN ADMIN SETUP</b> and copy the <b>SETUP CODE</b>. Only someone who can see the private server logs should complete setup.</p>
+    <p>Open your Beacon service in <b>your Docker container logs</b>. Find <b>BEACON FIRST-RUN ADMIN SETUP</b> and copy the <b>SETUP CODE</b>. Only someone who can see the private server logs should complete setup.</p>
   </div>
   <form id="setupForm">
-    <label>One-time setup code<input id="setupCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" required placeholder="Paste the code from Dokploy logs"></label>
+    <label>One-time setup code<input id="setupCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" required placeholder="Paste the code from container logs"></label>
     <label>Administrator username<input id="setupUsername" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]{3,32}" required placeholder="e.g. admin"></label>
     <label>Display name<input id="setupDisplay" maxlength="80" required placeholder="Your name"></label>
     <label>Administrator password<input id="setupPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required placeholder="At least 12 characters"></label>
@@ -249,50 +249,28 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
    </form>
   </section>
 <section id="adminUpdates" class="admin-section hidden">
-  <div class="admin-card">
-   <div class="admin-section-header">
-    <div><p class="admin-eyebrow">Release management</p><h2>Server updates</h2>
-     <p class="muted">Update Beacon here. Dokploy replaces the server without another Compose edit.</p></div>
-    <span id="adminUpdaterBadge" class="role-pill">Checking connection…</span>
-   </div>
-   <div class="update-summary-grid">
-    <div><small>Installed version</small><strong id="adminCurrentVersion">Checking…</strong></div>
-    <div><small>Build revision</small><strong id="adminCurrentRevision">Checking…</strong></div>
-    <div><small>Deployment method</small><strong id="adminUpdateSource">Checking…</strong></div>
-   </div>
-   <p id="adminUpdateState" class="admin-info-line" role="status" aria-live="polite">Checking update status…</p>
-   <div class="admin-section-actions">
-    <button id="adminUpdateNow" class="admin-primary" type="button" disabled>Deploy latest Beacon</button>
-    <button id="adminUpdateRefresh" type="button" class="admin-secondary">Refresh status</button>
-   </div>
-   <p class="muted update-help">Dokploy builds from the existing source configuration or pulls its configured image. Your database volume is preserved. An accepted update request does not guarantee the new version is healthy.</p>
+ <div class="admin-card">
+  <div class="admin-section-header"><div><p class="admin-eyebrow">Built-in release management</p><h2>Update directly from GitHub</h2>
+   <p class="muted">Runs entirely inside Beacon, on any Docker host. No deployment integrations.</p></div><span id="adminUpdaterBadge" class="role-pill">GitHub · main</span></div>
+  <div class="update-summary-grid">
+   <div><small>Running version</small><strong id="adminCurrentVersion">Checking…</strong></div>
+   <div><small>Running revision</small><strong id="adminCurrentRevision">Checking…</strong></div>
+   <div><small>Latest GitHub revision</small><strong id="adminUpdateLatest">Not checked</strong></div>
   </div>
-  <div class="admin-card">
-   <div class="admin-section-header">
-    <div><p class="admin-eyebrow">One-time connection</p><h2>Connect to Dokploy</h2>
-     <p class="muted">Set this up once inside Beacon. Future releases update from the button above.</p></div>
-   </div>
-   <form id="adminUpdaterForm" class="admin-settings-form">
-    <label>Dokploy HTTPS address
-     <input id="adminDokployUrl" type="url" placeholder="https://dokploy.example.com" autocomplete="url" maxlength="512" required>
-     <span class="form-help">Use an address reachable from the Beacon container, with a trusted HTTPS certificate.</span>
-    </label>
-    <label>Compose service ID
-     <input id="adminDokployComposeId" type="text" maxlength="128" autocomplete="off" spellcheck="false" required placeholder="Compose ID from Dokploy">
-     <span class="form-help">Use the Dokploy Compose service ID, not its name or container ID.</span>
-    </label>
-    <label>Dokploy API key
-     <input id="adminDokployApiKey" type="password" maxlength="2048" autocomplete="new-password" placeholder="Leave blank to keep the saved key">
-     <span class="form-help">Stored only in the server's protected persistent data directory. Never returned to the browser or committed to GitHub.</span>
-    </label>
-    <p id="adminUpdaterConfigError" class="error" role="alert" aria-live="polite"></p>
-    <p id="adminUpdaterConfigStatus" class="muted" role="status" aria-live="polite">No connection saved.</p>
-    <div class="admin-settings-actions">
-     <button id="adminUpdaterSave" type="submit" class="admin-primary">Verify &amp; save connection</button>
-     <button id="adminUpdaterDisconnect" type="button" class="admin-secondary" disabled>Disconnect</button>
-    </div>
-   </form>
+  <p id="adminUpdateSource" class="muted">Official source: GitHub</p>
+  <p id="adminUpdateDetail" class="muted" aria-live="polite"></p>
+  <p id="adminUpdateState" class="admin-info-line" role="status" aria-live="polite">Loading updater…</p>
+  <div class="admin-section-actions" style="display:flex;gap:10px;flex-wrap:wrap">
+   <button id="adminUpdateCheck" type="button" class="admin-secondary">Check GitHub</button>
+   <button id="adminUpdateNow" type="button" class="admin-primary" disabled>Download &amp; install</button>
+   <button id="adminUpdateRollback" type="button" class="admin-secondary" disabled>Roll back</button>
+   <button id="adminUpdateRefresh" type="button" class="admin-secondary">Refresh</button>
   </div>
+  <p class="muted update-help">Downloads and verifies application source against its GitHub commit, stages it on the existing persistent volume, restarts the Beacon process and automatically rolls back startup failures. Accounts and messages are preserved.</p>
+ </div>
+ <div class="admin-card"><p class="admin-eyebrow">Update scope</p><h2>Application code updates</h2>
+  <p class="muted" style="margin-top:10px;line-height:1.7">Web interface and Python application releases update without replacing the Docker container. Changes to the base image or Python dependencies still require rebuilding the container image. Incompatible updates are refused.</p>
+ </div>
  </section>
  </div>
 </section>
@@ -646,21 +624,8 @@ async function adminTab(section){
    const settings=await api("/admin/settings");
    $("adminServerName").value=settings.server_name;$("adminTagline").value=settings.tagline;
   }else if(section==="updates"){
-   $("adminTitle").textContent="Updates & deployment";
-   const [d,config]=await Promise.all([api("/admin/update/status"),api("/admin/update/config")]);
-   $("adminCurrentVersion").textContent=d.current_version||"Unknown";
-   $("adminCurrentRevision").textContent=d.revision||"Unknown";
-   $("adminUpdateSource").textContent=d.deployment_source==="image"?"Docker registry image":"Git source build";
-   $("adminUpdateNow").textContent=d.deployment_source==="image"?"Pull & deploy image":"Build & deploy latest main";
-   $("adminUpdateNow").disabled=!d.configured||d.state==="queued";
-   $("adminUpdaterBadge").textContent=config.configured?"● Dokploy connected":"○ Connection needed";
-   $("adminUpdateState").textContent=d.configured?(d.state==="idle"?"Ready to request an update from Dokploy.":d.message):"Connect Beacon to your existing Dokploy service using the form below. No Compose edits are needed for the connection.";
-   $("adminDokployUrl").value=config.url||"";
-   $("adminDokployComposeId").value=config.compose_id||"";
-   $("adminDokployApiKey").value="";
-   $("adminUpdaterConfigError").textContent="";
-   $("adminUpdaterConfigStatus").textContent=config.configured?"Connected to "+config.url+" · Compose ID: "+config.compose_id+" · API key retained on server.": "Not yet configured. Enter your Dokploy URL, Compose ID, and API key.";
-   $("adminUpdaterDisconnect").disabled=config.source!=="saved";
+   $("adminTitle").textContent="Native GitHub updates";
+   await renderNativeUpdateStatus();
   }
  }catch(e){adminMessage(e.message);}
 }
@@ -676,41 +641,49 @@ $("adminSessionSearch").addEventListener("input",renderAdminSessions);
 $("adminQuickAccounts").onclick=()=>adminTab("users");
 $("adminQuickDevices").onclick=()=>adminTab("sessions");
 $("adminQuickSettings").onclick=()=>adminTab("settings");
-$("adminUpdateRefresh").onclick=()=>adminTab("updates");
-$("adminUpdaterForm").onsubmit=async e=>{
- e.preventDefault();
- const button=$("adminUpdaterSave");
- button.disabled=true;button.textContent="Verifying Dokploy…";
- $("adminUpdaterConfigError").textContent="";
- try{
-  const result=await api("/admin/update/config","PUT",{
-   url:$("adminDokployUrl").value.trim(),
-   compose_id:$("adminDokployComposeId").value.trim(),
-   api_key:$("adminDokployApiKey").value.trim()
-  });
-  $("adminDokployApiKey").value="";
-  toast("Dokploy connection verified and saved.","success");
-  await adminTab("updates");
- }catch(err){$("adminUpdaterConfigError").textContent=err.message;}
- finally{button.disabled=false;button.textContent="Verify & save connection";}
-};
-$("adminUpdaterDisconnect").onclick=async()=>{
- if(!confirm("Disconnect Beacon from Dokploy? This removes the saved API key. Your Beacon server and messages will not be changed."))return;
- const button=$("adminUpdaterDisconnect");button.disabled=true;
- try{
-  await api("/admin/update/config","DELETE");
-  toast("Stored Dokploy connection removed.","success");await adminTab("updates");
- }catch(err){$("adminUpdaterConfigError").textContent=err.message;button.disabled=false;}
+let updatePoll=null;
+function paintUpdateStatus(d){
+ const available=d.available, busy=d.busy||["queued","downloading","verifying","activating","rolling_back"].includes(d.state);
+ $("adminUpdaterBadge").textContent="● GitHub · main";
+ $("adminCurrentVersion").textContent=d.current_version||"Unknown";
+ $("adminCurrentRevision").textContent=(d.revision||"unknown").slice(0,12);
+ $("adminUpdateLatest").textContent=available?.revision?available.revision.slice(0,12):"Not checked";
+ $("adminUpdateSource").textContent="github.com/"+d.repository+" · "+d.channel;
+ $("adminUpdateDetail").textContent=available?.checked_at?
+   "Last checked "+new Date(available.checked_at*1000).toLocaleString()+(available.message?" · "+available.message:""):"Use Check GitHub to compare versions.";
+ $("adminUpdateState").textContent=(d.state||"idle").replaceAll("_"," ")+": "+(d.message||"Ready");
+ $("adminUpdateNow").disabled=busy||Boolean(available&&available.revision===d.revision);
+ $("adminUpdateNow").textContent=busy?"Installing…":available?.revision===d.revision?"Already up to date":"Download & install";
+ $("adminUpdateRollback").disabled=busy||!d.can_rollback;
+ $("adminUpdateCheck").disabled=busy;
+ clearTimeout(updatePoll);
+ if(busy)updatePoll=setTimeout(()=>{if(!$("adminUpdates").classList.contains("hidden"))renderNativeUpdateStatus();},2000);
+}
+async function renderNativeUpdateStatus(){
+ try{paintUpdateStatus(await api("/admin/update/status"));}
+ catch(err){$("adminUpdateState").textContent="Server unavailable: "+err.message;
+   if(!$("adminUpdates").classList.contains("hidden"))updatePoll=setTimeout(renderNativeUpdateStatus,3500);}
+}
+$("adminUpdateRefresh").onclick=renderNativeUpdateStatus;
+$("adminUpdateCheck").onclick=async()=>{
+ const button=$("adminUpdateCheck");button.disabled=true;button.textContent="Checking…";
+ try{await api("/admin/update/check");await renderNativeUpdateStatus();}
+ catch(err){$("adminUpdateState").textContent=err.message;}
+ finally{button.disabled=false;button.textContent="Check GitHub";}
 };
 $("adminUpdateNow").onclick=async()=>{
- if(!confirm("Build and deploy the latest Beacon server using the existing Dokploy service? The site may disconnect briefly. Your data volume will be retained."))return;
- const button=$("adminUpdateNow");button.disabled=true;
- $("adminUpdateState").textContent="Sending update request to Dokploy…";
- try{
-  const result=await api("/admin/update","POST");
-  $("adminUpdateState").textContent=result.message;
-  setTimeout(()=>{if(!$("adminUpdates").classList.contains("hidden"))adminTab("updates");},1800);
- }catch(err){$("adminUpdateState").textContent=err.message;button.disabled=false;}
+ if(!confirm("Download and install the latest Beacon application code from GitHub? Beacon may briefly reconnect. Account and message data will remain unchanged."))return;
+ $("adminUpdateNow").disabled=true;
+ try{const result=await api("/admin/update","POST");$("adminUpdateState").textContent=result.message;
+   updatePoll=setTimeout(renderNativeUpdateStatus,1000);}
+ catch(err){$("adminUpdateState").textContent=err.message;await renderNativeUpdateStatus();}
+};
+$("adminUpdateRollback").onclick=async()=>{
+ if(!confirm("Switch to the previous Beacon application version? This does not roll back messages or user data."))return;
+ $("adminUpdateRollback").disabled=true;
+ try{const result=await api("/admin/update/rollback","POST");$("adminUpdateState").textContent=result.message;
+   updatePoll=setTimeout(renderNativeUpdateStatus,1000);}
+ catch(err){$("adminUpdateState").textContent=err.message;await renderNativeUpdateStatus();}
 };
 $("adminResetCancel").onclick=()=>$("adminResetDialog").close();
 $("adminResetForm").onsubmit=async e=>{
