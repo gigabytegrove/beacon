@@ -1,8 +1,16 @@
-# Deploy Beacon with Dokploy (recommended)
+# Optional: hosting Beacon with Dokploy
 
-## Standard Raw Docker Compose (public repository)
+Beacon is a normal Docker application. **Dokploy is not required, does not
+control Beacon updates, and never needs credentials inside Beacon.** This
+document only describes one possible way of hosting the container. Use
+[INSTALL.md](INSTALL.md) for the universal Docker instructions.
 
-Beacon also supports **Dokploy Raw Compose**, with no prepublished image and no local Dockerfile. Use the root [compose.raw.yaml](../compose.raw.yaml), or paste this minimal Compose into Dokploy:
+## First installation or initial 0.9.0 bootstrap
+
+Use the existing `compose.raw.yaml` for **Raw Compose** or
+`compose.dokploy.yaml` when your Dokploy Compose service uses the public
+GitHub repository as its source. For Raw Compose, the remote build context
+must specify a real source location:
 
 ```yaml
 services:
@@ -15,98 +23,77 @@ services:
       - beacon-data:/data
     networks:
       - dokploy-network
+
 volumes:
   beacon-data:
     name: beacon-data
+
 networks:
   dokploy-network:
     external: true
 ```
 
-Docker Compose fetches the public repository and its Dockerfile at build time using a remote Git build context. The repository must actually be anonymously readable from the Dokploy host. **No GitHub credential, token, or GitHub Actions is required.** This fixes the Raw Compose `open Dockerfile: no such file or directory` failure caused by `build: .`. Continue setup using the one-time code from private Beacon container logs; the `beacon-data` volume must be retained.
+The repository is public; GitHub authentication is **not required for
+downloading source**. The exposed port and network settings are examples;
+configure them for your own deployment. If port 8765 is accessible from
+outside a trusted network, restrict it or configure HTTPS through the
+container manager's normal reverse proxy. Preserve WebSocket upgrades at
+`/api/ws`.
 
+For a fresh database, watch the Beacon container log for
+`BEACON FIRST-RUN ADMIN SETUP` and the one-time setup code. Enter it into
+Beacon's first-run administrator wizard. Never put a default administrator
+password in the public source or expose the setup code.
 
-## Alternative: Git-sourced Compose (not required)
+**Existing installations:** Inspect the current `/data` mount and keep
+the same actual Docker volume when updating. Names such as `beacon-data`
+might be prefixed by the Compose project. Do not delete or replace the
+existing volume to solve a deployment error.
 
-Earlier Raw Compose deployments failed because they used `build: .`, which requires a local Dockerfile. Use the remote Git build context in `compose.raw.yaml` instead. Git-sourced Dokploy Compose also remains available, but is not required. No GitHub Actions are used.
+## Native Beacon updates — not Dokploy updates
 
-## First-run administrator wizard
+Starting with Beacon 0.9.0, an **application-code** release is handled
+inside Beacon itself:
 
-For a fresh installation **do not set BEACON_ADMIN_PASSWORD**. Beacon generates a single-use setup code and logs it in the private Beacon container logs. Open **Dokploy → Beacon → Logs**, find `BEACON FIRST-RUN ADMIN SETUP` and copy the `SETUP CODE`. Open Beacon in your browser; its new first-run wizard asks for the code, administrator username, display name, password (minimum 12 characters), and password confirmation. After creating the administrator, sign in normally. The code is deleted after use, is never exposed by an HTTP endpoint, and the setup page cannot be used once any account exists.
+**Control Center → Updates → Check GitHub → Download & install.**
 
-Do not share the setup code, expose TCP 8765 publicly during initial configuration, or delete the `beacon-data` volume on redeploy. Existing user databases remain intact. Legacy env-provided admin credentials still work only on the *first* startup if deliberately configured; they are optional and bypass the wizard.
+Beacon retrieves GitHub code, verifies the selected commit, installs a
+new version into the existing data volume, restarts its own web server
+process, and automatically rolls back if startup health checks fail.
 
----
+No Dokploy API URL, Compose service ID, Dokploy API key, GitHub personal
+access token or sidecar updater is required.
 
-Beacon is managed by **Dokploy Docker Compose**, not by running git and docker compose from `/root/beacon` on the host. Dokploy fetches the private GitHub repo and builds the server for you. There is no requirement for a `/root/beacon` directory.
+If the running Beacon image is **older than 0.9.0**, perform the normal
+Dokploy **Deploy/Rebuild once** to install the native launcher. This
+initial upgrade is the only unavoidable Docker-management step for existing
+deployments. Subsequent compatible application-code updates happen in
+Beacon's own Control Center.
 
-## Initial setup
+Base-image changes, changed Python dependencies and immutable launcher
+bootstrap changes require building/replacing the Docker image through
+the existing hosting tool. See [SERVER-UPDATER.md](SERVER-UPDATER.md).
 
-1. In Dokploy, open your project (or create one), **Create Service → Compose**, and select **Docker Compose**. Do **not** select Docker Stack/Swarm: this setup uses `build:`.
-2. Choose the **GitHub** source connected to the private `gigabytegrove/beacon` repository. Ensure your Dokploy GitHub integration has access to the private repo.
-3. Select branch **`main`** and **Compose Path `./compose.dokploy.yaml`**. Save. The repository contains the Dockerfile and everything required to build the server image.
-4. In the Compose service **Environment** tab, configure:
-   - **Leave `BEACON_ADMIN_PASSWORD` unset for the first-run wizard.** Existing env-based bootstrap is optional and is supported for compatibility.
-   - `BEACON_ADMIN_USERNAME=admin` (or your preferred initial administrator username)
-   - `BEACON_BIND_IP=0.0.0.0` (optional; publishes port on host network; restrict via firewall), or your **actual host LAN IP** to restrict it to that interface
-   - `BEACON_PORT=8765` (optional; host listening port)
-5. Save environment variables and **Deploy** in Dokploy. The `beacon` service should build and enter a healthy state. Check its **Logs** and **Deployments** tabs. The Docker named volume `beacon-data` persists the SQLite database under `/data`.
-6. Open `http://YOUR_DOCKER_HOST_LAN_IP:8765` and complete the one-time admin setup wizard using the code shown in Dokploy's Beacon service logs. Then sign in.
+## Diagnostics, backups, and ports
 
-The Compose file explicitly references `${BEACON_ADMIN_PASSWORD}` and the other variables, because Dokploy's Environment editor does **not** automatically inject arbitrary variables into containers. It interpolates them through the Compose configuration. <https://docs.dokploy.com/docs/core/docker-compose>
+- **Health:** `GET /health` responds with status, version and running code
+  revision.
+- **First run:** Check container logs for the one-time setup code; do not
+  delete `/data` to generate a new code.
+- **Build fails:** Ensure the Git remote build context can be read by your
+  Docker host. `build: .` requires a real checked-out Dockerfile; Raw
+  Compose without a checkout needs the remote Git context above.
+- **Chat live updates fail:** Ensure HTTP WebSocket upgrade support at
+  `/api/ws`.
+- **Data missing:** Check which Docker volume is mounted at `/data`,
+  including project-scoped volume names, before changing anything.
+- **Backups:** Use SQLite's online backup API or a consistent volume
+  snapshot. Protect message history, profile images and credentials as
+  private data.
+- **Native update refused:** Check whether the GitHub commit changes
+  `requirements.txt` or image/runtime dependencies. Such releases require
+  an image rebuild rather than code-only activation.
 
-## Optional Dokploy domain / reverse proxy
-
-The Beacon service is connected to Dokploy's external `dokploy-network`, which allows you to use the **Domains** tab. Add a Dokploy domain for service **`beacon`**, application/container port **`8765`**, and enable HTTPS/TLS. Dokploy recommends configuring domains in the Domains UI rather than hard-coding Traefik labels. Ensure WebSocket upgrades on `/api/ws` pass through the proxy.
-
-For **proxy-only** usage, `BEACON_BIND_IP=127.0.0.1` prevents direct remote access to the published host port; Traefik still connects over the shared `dokploy-network`. For access by LAN-IP directly, use the actual LAN-facing host IP or `0.0.0.0` with a firewall restricting source networks. The latter binds on **all** host interfaces, so do not forward TCP 8765 publicly.
-
-Beacon does not provide TLS on its raw port. Use HTTPS for networks you do not explicitly trust, and avoid publicly exposing Beacon without authentication and access controls.
-
-## Updating through Dokploy
-
-When a Beacon release is pushed to GitHub, open the existing Beacon Compose service in Dokploy and select **Deploy / Redeploy**. If you've enabled Dokploy Auto Deploy and granted GitHub access, pushes to `main` can trigger deployments according to your configuration. You should **not** run `git pull` or `docker compose up` from `/root` on the Dokploy host.
-
-Dokploy rebuilds the image from the repository. The named `beacon-data` volume is not discarded when the container is replaced. **Do not choose options that delete volumes**, and do not create another Beacon service that uses the same explicit `beacon-data` name. Keep backups before upgrading, especially when the server database schema changes.
-
-## Backups and restore
-
-Configure Dokploy's **Volume Backups** against Docker named volume `beacon-data` and an appropriate backup destination, or perform a consistent SQLite backup from a running Beacon container. Backups contain message history, usernames, password hashes and profile images; treat them as private.
-
-Dokploy's backup documentation: <https://docs.dokploy.com/docs/core/volume-backups>.
-
-A restored database must be placed into the **same** persistent volume. Avoid deleting/recreating the named volume when troubleshooting. The service runs as UID 10001; restored files must remain writable by that user.
-
-## If deployment fails
-
-- **`Dockerfile` missing / Raw Compose:** Change `build: .` to `build: "https://github.com/gigabytegrove/beacon.git#main"`. Docker then fetches the Dockerfile through its remote Git build context. If it fails to fetch, verify anonymous repository access and network/DNS from the Docker host.
-- **Git access denied:** Check Dokploy's GitHub source connection has access to the private repository.
-- **Compose file not found:** The Compose Path must be **`./compose.dokploy.yaml`**, not a server directory like `/root/beacon`.
-- **First-run wizard missing:** Check `/api/setup/status`, confirm the updated image is running, and check the private Beacon logs for the setup code. A missing `BEACON_ADMIN_PASSWORD` is normal.
-- **`dokploy-network` not found:** Verify you're deploying on a Dokploy-managed Docker host that has the external network. The regular `compose.yaml` is for standalone local Docker installations.
-- **Port already in use:** Set `BEACON_PORT` to an unused host port, or switch to proxy-only binding.
-- **Connection refused:** Check the Dokploy service's Logs, Deployments and health status; the host port is not listening until deployment succeeds.
-- **HTTP works but chats never update:** Configure the proxy for WebSocket Upgrade on `/api/ws` and preserve the external Host header.
-- **Existing data missing:** Verify you're looking at the intended Docker volume `beacon-data`; do not initialize new data over an old volume.
-
-## Docker Compose vs Docker Stack
-
-Choose **Compose / Docker Compose**, because the server image is built from Git with `build.context: .`. Dokploy's Docker Stack variant does not support the same build method.
-
-See [official Dokploy Compose documentation](https://docs.dokploy.com/docs/core/docker-compose) and [Dokploy Compose example](https://docs.dokploy.com/docs/core/docker-compose/example).
-
-## v0.7.0 client/server compatibility
-
-All three native clients connect to this one Dokploy-hosted Beacon server. Windows, Linux and Android v0.7.0 expect the new authenticated `/api/messages/search` endpoint; redeploy the server from `main` through Dokploy before using client search. Native builds are produced locally with the manual platform build scripts, not GitHub Actions. `compose.dokploy.yaml`, the `beacon-data` persistent volume and TCP port 8765 remain unchanged.
-
-## Beacon 0.8.0: Go desktop clients, unchanged Docker deployment
-
-Windows and Linux clients are now built as Go/Fyne executables. **Nothing about this requires Go or Python to be installed on desktop client devices.** The server remains the single Python/FastAPI Docker Compose service on Dokploy using `./compose.dokploy.yaml`. Redeploy GitHub `main` through Dokploy to receive the server's buddy field compatibility fix. No new service, container or host directory is needed, and the existing `beacon-data` volume must remain intact.
-
-## Early client testing
-
-Before testing the desktop/mobile apps, use the independent [Beacon Probe](../tools/beacon-probe/README.md) to verify `/health` and optionally the authenticated API from a LAN workstation. The probe is a compiled Go diagnostic, not the GUI client. See [Build and Test](BUILD-AND-TEST.md) for local-only client build instructions. GitHub Actions is disabled.
-
-## SQLite/presence stabilization
-
-The backend now uses bounded SQLite connection lifetimes and a presence index added at application startup. This change is compatible with the existing `beacon-data` persistent volume; it does **not** require a new container, port, Compose filename or standalone checkout. **Back up `beacon-data` before deploying** a source commit containing database migrations, then redeploy the existing GitHub-backed Dokploy Compose service from `main`. Confirm health and two-device presence after rollout.
+Official platform docs:
+[Dokploy Compose](https://docs.dokploy.com/docs/core/docker-compose) and
+[Volume backups](https://docs.dokploy.com/docs/core/volume-backups).
