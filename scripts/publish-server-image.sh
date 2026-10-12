@@ -55,7 +55,6 @@ container_id="$(docker run -d \
   --cap-drop ALL \
   --tmpfs /tmp:rw,nosuid,nodev,size=64m \
   -e BEACON_DB=/tmp/beacon.db \
-  -e BEACON_ADMIN_PASSWORD='beacon-smoke-test-nonproduction-credential' \
   "$local_image")"
 ready=0
 for ((attempt=1;attempt<=20;attempt++)); do
