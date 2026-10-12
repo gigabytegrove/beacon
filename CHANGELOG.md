@@ -1,5 +1,17 @@
 # Beacon changelog
 
+## 0.8.4 (development) — Account management repair and Control Center polish
+
+- Replaced the old click-driven Create Account fields with a real validated form: required username/display name/password, constrained usernames, password confirmation, password visibility, visible pending state, and errors that remain in the open dialog.
+- API clients now display detailed FastAPI field validation errors and HTTP failures instead of discarding the response as the generic "Request failed"; missing routes, network failures, authorization, duplicate usernames and server faults show distinct guidance.
+- Server validates new usernames (3–32 characters, supported characters only), display names (1–80), and passwords (12–256) and returns a useful account-creation result. Existing users and passwords are untouched.
+- Rebuilt Control Center account administration with search/filter, account counts, member avatars, administrator/member badges, creation dates, password reset with inline error/success feedback and refreshed account data.
+- Added polished Overview quick actions/server health, searchable active device sessions with safe revocation, and responsive Settings form with explicit save status.
+- Added regression tests for API account creation, invalid inputs, case-insensitive duplicates, member access restrictions and form/UI hooks. Tests are committed; full server runtime verification remains a separate release gate.
+- Server-side updater integration remains optional; no Dokploy credentials or Docker socket are required to use Beacon's messenger or account management.
+- No database schema reset, removal or migration is part of this UI update.
+
+
 ## 0.8.2 — Dokploy first-run setup and raw-source deployment fix
 
 - New first-run **administrator creation wizard** in the served web UI; no default account and no mandatory administrator password environment variable.
