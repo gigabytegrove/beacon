@@ -93,6 +93,10 @@ def init_db():
             last_read_id INTEGER NOT NULL DEFAULT 0,
             PRIMARY KEY(user_id, peer_id)
         );
+        CREATE TABLE IF NOT EXISTS server_settings(
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        );
         """)
         for table, column, definition in (
             ("users", "avatar", "TEXT NOT NULL DEFAULT ''"),
@@ -558,3 +562,8 @@ app.include_router(aim_router)
 
 from .social import router as social_router
 app.include_router(social_router)
+
+# Management API for the server web control center.
+from .admin import register as register_admin_routes
+register_admin_routes(app, current=current, connection=connection, lock=LOCK,
+                      hash_password=password_hash, disconnect_session=disconnect_session)
