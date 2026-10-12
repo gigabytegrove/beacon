@@ -1,4 +1,5 @@
 """Native supervisor tests without Docker or a live network connection."""
+import hashlib
 import io
 import json
 from pathlib import Path
@@ -15,10 +16,13 @@ def test_release_validation_rejects_corrupt_and_untracked_versions(tmp_path, mon
     assert launcher._release(revision) is None
     (folder / "server").mkdir()
     (folder / "server" / "main.py").write_text("app = object()\n")
-    launcher._write(folder / "release.json", {"revision": "b"*40, "version": "0.9.1"})
+    hashes = {"server/main.py": hashlib.sha256((folder / "server" / "main.py").read_bytes()).hexdigest()}
+    launcher._write(folder / "release.json", {"revision": "b"*40, "version": "0.9.1", "files": hashes})
     assert launcher._release(revision) is None
-    launcher._write(folder / "release.json", {"revision": revision, "version": "0.9.1"})
+    launcher._write(folder / "release.json", {"revision": revision, "version": "0.9.1", "files": hashes})
     assert launcher._release(revision) == folder
+    (folder / "server" / "main.py").write_text("tampered\n")
+    assert launcher._release(revision) is None
 
 
 def test_supervisor_launches_staged_code_as_selected_import_root(tmp_path, monkeypatch):
@@ -27,7 +31,8 @@ def test_supervisor_launches_staged_code_as_selected_import_root(tmp_path, monke
     folder = tmp_path / "releases" / revision
     (folder / "server").mkdir(parents=True)
     (folder / "server" / "main.py").write_text("x = 1\n")
-    launcher._write(folder / "release.json", {"revision": revision, "version": "0.9.1"})
+    hashes = {"server/main.py": hashlib.sha256((folder / "server" / "main.py").read_bytes()).hexdigest()}
+    launcher._write(folder / "release.json", {"revision": revision, "version": "0.9.1", "files": hashes})
     spawned = []
 
     class FakeProcess:
