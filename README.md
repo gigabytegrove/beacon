@@ -22,9 +22,12 @@ The Go desktop code includes authenticated sign-in, independent device sessions,
 
 ## Deploy the Docker server
 
-## Compose build from the public repository
+Beacon runs in a **single ordinary Docker container**. Docker Engine,
+Docker Compose, Portainer, Dokploy and other compatible Compose managers
+are all supported. A public GitHub source build is enough for first install;
+no registry image or platform API key is necessary.
 
-Beacon can be installed using ordinary Docker Compose or a compatible Compose manager. No prepublished registry image is required. Build from this public GitHub repository:
+For a fresh installation, use this example Compose configuration:
 
 ```yaml
 services:
@@ -35,25 +38,28 @@ services:
       - "8765:8765"
     volumes:
       - beacon-data:/data
-    networks:
-      - dokploy-network
 volumes:
   beacon-data:
-    name: beacon-data
-networks:
-  dokploy-network:
-    external: true
 ```
 
-Docker Compose fetches the public repository and its Dockerfile at build time using a remote Git build context. The repository must actually be anonymously readable from the Dokploy host. **No GitHub credential, token, or GitHub Actions is required.** This fixes the Raw Compose `open Dockerfile: no such file or directory` failure caused by `build: .`. Continue setup using the one-time code from private Beacon container logs; the `beacon-data` volume must be retained.
+Start Beacon using your preferred Docker management tool, open port 8765,
+and view the container logs for the one-time administrator **SETUP CODE**.
+Use that code in the browser's first-run wizard. The password and setup code
+are not hard-coded. Keep your actual named volume stable: existing Compose
+projects may use a project-prefixed volume name.
 
+**Existing installations:** Do not overwrite a working volume mapping
+with the example above. Confirm which volume currently holds
+`/data/beacon.db`, and preserve it through upgrades.
 
+The first move to version 0.9.0 requires one image build to install the
+native supervisor. Once installed, subsequent compatible code updates
+are initiated using Beacon's own **Control Center → Updates** without
+managing Docker again.
 
-This is the required server deployment method. In Dokploy create **Compose → Docker Compose** (not Stack), connect private GitHub repository `gigabytegrove/beacon`, branch `main`, with **Compose Path `./compose.dokploy.yaml`**. Raw Compose is supported using `build: "https://github.com/gigabytegrove/beacon.git#main"`; Docker fetches the public repository and Dockerfile at build time. A Git-sourced Compose service also works. No admin password environment variable is required: click **Deploy**, find the one-time **SETUP CODE** in Beacon's private Dokploy logs, and complete the administrator creation wizard at the Beacon URL. The service uses external `dokploy-network` and stable persistent named volume `beacon-data`; the container listens on port 8765.
-
-**Do not try to clone the repository into `/root/beacon` or run shell Compose commands on the Dokploy server.** Update the Compose service by redeploying GitHub `main` from the Dokploy UI. Back up the data volume first. Restrict the LAN port with firewall rules or configure HTTPS through a Dokploy Domain. See [Dokploy Guide](docs/DOKPLOY.md).
-
-For non-Dokploy users, `compose.yaml` remains an optional standalone deployment example.
+Full setup and backups: [Install guide](docs/INSTALL.md).
+Optional platform-specific Compose instructions:
+[Dokploy](docs/DOKPLOY.md).
 
 ## Documentation
 
@@ -146,7 +152,7 @@ The [Windows and Linux locally compiled test builds](releases/previews/2026-10-1
 
 ## First-run administration (server 0.8.2)
 
-For an empty `beacon-data` database, Beacon **does not require a preconfigured password**. The server logs a cryptographically random one-time setup code to its private Dokploy logs. The web page detects an unclaimed installation and guides you through creating your own admin username and password. Setup is disabled forever after any user exists; redeploying never resets established accounts. The code is deleted after a successful claim. Existing explicitly configured environment-admin passwords are still honored on brand-new databases only.
+For an empty `beacon-data` database, Beacon **does not require a preconfigured password**. The server logs a cryptographically random one-time setup code to its private container logs. The web page detects an unclaimed installation and guides you through creating your own admin username and password. Setup is disabled forever after any user exists; redeploying never resets established accounts. The code is deleted after a successful claim. Existing explicitly configured environment-admin passwords are still honored on brand-new databases only.
 
 **Important deployment prerequisite:** The supplied `compose.dokploy.yaml` must be used with a Git-sourced Dokploy Compose service. Pasting it into a *Raw Compose* editor produces `Dockerfile: no such file or directory` because raw mode does not check out the repository. See [the corrected Dokploy guide](docs/DOKPLOY.md).
 
