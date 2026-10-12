@@ -62,6 +62,7 @@ root=pathlib.Path("/data/beacon-updates")
 sha="a"*40
 folder=root/"releases"/sha/"server"
 folder.mkdir(parents=True,exist_ok=True)
+(folder/"__init__.py").write_text("")
 (folder/"main.py").write_text("raise RuntimeError(\"intentional rollback smoke test\")\n")
 (folder.parent/"release.json").write_text(json.dumps({"revision":sha,"version":"0.9.1"}))
 (root/"pending.json").write_text(json.dumps({"revision":sha}))
