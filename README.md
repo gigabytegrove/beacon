@@ -149,3 +149,24 @@ The [Windows and Linux locally compiled test builds](releases/previews/2026-10-1
 For an empty `beacon-data` database, Beacon **does not require a preconfigured password**. The server logs a cryptographically random one-time setup code to its private Dokploy logs. The web page detects an unclaimed installation and guides you through creating your own admin username and password. Setup is disabled forever after any user exists; redeploying never resets established accounts. The code is deleted after a successful claim. Existing explicitly configured environment-admin passwords are still honored on brand-new databases only.
 
 **Important deployment prerequisite:** The supplied `compose.dokploy.yaml` must be used with a Git-sourced Dokploy Compose service. Pasting it into a *Raw Compose* editor produces `Dockerfile: no such file or directory` because raw mode does not check out the repository. See [the corrected Dokploy guide](docs/DOKPLOY.md).
+
+## Beacon server updates — Docker Compose + GHCR (development)
+
+The server's **Control Center → Updates** page is now backed by an admin-only
+Dokploy Compose redeploy endpoint. The server accepts Dokploy integration
+settings only through its container environment, never from the browser; the
+web UI displays installed version/revision and whether updating is configured.
+It uses the existing Dokploy deployment (no extra updater container and no
+Docker socket). This first pass requests a redeploy, but does not yet provide a
+registry-digest-based update-available indicator or full deployment progress.
+
+A dedicated **[prebuilt-image Compose file](compose.image.yaml)** and
+**[local-only GHCR publisher](scripts/publish-server-image.sh)** are included.
+No GHCR image is considered published merely because these files exist.
+**Do not switch a running source-build service to the image Compose file until
+a tagged image is actually built, pushed and pull-verified.** Existing
+`compose.raw.yaml` / `compose.dokploy.yaml` setups remain supported, and the
+database continues to use the persistent `beacon-data` volume.
+
+See the complete [one-time updater setup and migration guide](docs/SERVER-UPDATER.md)
+for credentials, images, rollback expectations and current limitations.
