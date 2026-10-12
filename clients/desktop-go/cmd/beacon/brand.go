@@ -85,8 +85,7 @@ func presenceDot(state string)fyne.CanvasObject{
  case "busy":col=brand.red
  }
  dot:=canvas.NewCircle(col)
- dot.SetMinSize(fyne.NewSize(11,11))
- return container.NewPadded(dot)
+ return container.NewGridWrap(fyne.NewSize(13,13),dot)
 }
 
 func noticeText(err error)string{
