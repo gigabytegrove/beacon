@@ -192,9 +192,9 @@ class FirstRunAdmin(BaseModel):
 
 
 class NewUser(BaseModel):
-    username: str
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_.-]+$")
     password: str = Field(min_length=12, max_length=256)
-    display_name: str = Field(min_length=1, max_length=80)
+    display_name: str = Field(min_length=1, max_length=80) = Field(min_length=1, max_length=80)
 
 
 class ChangePassword(BaseModel):
@@ -337,7 +337,7 @@ def create_user(data: NewUser, request: Request):
             )
         except sqlite3.IntegrityError:
             raise HTTPException(409, "Username already exists")
-    return {"id": result.lastrowid, "username": data.username}
+    return {"id": result.lastrowid, "username": data.username, "display_name": data.display_name.strip(), "role": "member"}
 
 
 @app.post("/api/me/password")
