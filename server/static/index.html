@@ -68,6 +68,8 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 #admin{background:#f1f5fb}
 .admin-top{position:sticky;top:0;z-index:5;background:#102441;border-bottom:1px solid #2c4a70;box-shadow:0 8px 30px #132d481a}
 .admin-top strong{letter-spacing:-.025em}
+.admin-build-badge{border:1px solid #446991;background:#203d60;color:#cfe5ff;border-radius:30px;padding:7px 12px;font-size:11px;font-weight:750;letter-spacing:.03em;white-space:nowrap}
+.admin-build-badge.failed{background:#663543;color:#fff2f3;border-color:#a95064}
 .admin-body{padding:30px 28px 52px}
 .admin-body>h1{font-size:clamp(25px,3vw,32px);letter-spacing:-.035em}
 .admin-body>p.muted{margin-top:7px;font-size:14px}
@@ -176,7 +178,7 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 </section>
 <section id="login" class="auth"><h1>◉ Beacon</h1><p class="muted">A familiar place to find your people.</p><form id="loginForm"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><label>Device name<input id="device" maxlength="80" required></label><button>Sign in</button></form><p id="loginError" class="error" role="alert"></p></section>
 <section id="admin" class="hidden" aria-label="Beacon server control center">
- <div class="admin-top"><strong>◉ Beacon · Control Center</strong>
+ <div class="admin-top"><strong>◉ Beacon · Control Center</strong><span id="adminBuildBadge" class="admin-build-badge" title="Actual running Beacon build">Verifying build…</span>
   <button id="adminOpenMessenger">Open messenger</button><button id="adminLogout">Sign out</button></div>
  <div class="admin-body">
   <h1 id="adminTitle">Server overview</h1><p class="muted">Manage accounts, devices and server settings.</p>
@@ -338,6 +340,21 @@ if(!token&&window.opener){try{token=window.opener.sessionStorage.getItem("beacon
 $("device").value=(navigator.platform||"Browser").slice(0,80);
 function toast(message,kind="info"){const el=document.createElement("div");el.className="toast "+kind;el.setAttribute("role","status");el.textContent=message;$("toasts").append(el);setTimeout(()=>el.remove(),5500);}
 function notify(title,body,kind="message"){tone(kind);toast(title+" — "+body);if("Notification" in window&&Notification.permission==="granted"&&document.hidden){try{new Notification(title,{body:body});}catch{}}}
+async function refreshBuildBadge(){
+ const badge=$("adminBuildBadge");
+ try{
+  const response=await fetch("/health",{cache:"no-store"});
+  if(!response.ok)throw Error("Server health HTTP "+response.status);
+  const build=await response.json();
+  if(build.status!=="ok"||!build.version||!build.ui_sha256)throw Error("Unrecognized server build");
+  badge.classList.remove("failed");
+  badge.textContent="Server "+build.version+" · "+String(build.revision||"unknown").slice(0,9);
+  badge.title="Running revision: "+(build.revision||"unknown")+" · UI fingerprint: "+build.ui_sha256;
+ }catch(err){
+  badge.textContent="Server build unverified";
+  badge.classList.add("failed");badge.title=err.message;
+ }
+}
 function apiErrorMessage(status,detail,method,path){
  if(Array.isArray(detail)&&detail.length){
   const problem=detail[0], field=Array.isArray(problem.loc)?problem.loc.filter(x=>typeof x==="string"&&x!=="body").pop():null;
@@ -349,6 +366,7 @@ function apiErrorMessage(status,detail,method,path){
   if(problem.type==="missing")msg="is required";
   return name+": "+msg;
  }
+ if(status>=500)return "Beacon returned HTTP "+status+" for "+method+" /api"+path+". The server logs contain the underlying error; the request was not confirmed.";
  if(typeof detail==="string"&&detail.trim())return detail;
  if(status===401)return "Your sign-in session expired. Please sign in again.";
  if(status===403)return "Your account does not have permission for this action.";
@@ -356,7 +374,7 @@ function apiErrorMessage(status,detail,method,path){
  if(status===409)return "An account with that username already exists.";
  if(status===422)return "Please check your entries and try again.";
  if(status===429)return "Too many requests. Please try again shortly.";
- if(status>=500)return "Beacon returned HTTP "+status+" for "+method+" /api"+path+". Check the server logs.";
+
  return "Request failed (HTTP "+status+").";
 }
 async function api(path,method="GET",body){
@@ -591,6 +609,7 @@ function adminMessage(message){$("adminError").textContent=message||"";}
 async function adminTab(section){
  if(!me||!me.is_admin)return;
  $("admin").classList.remove("hidden");$("roster").classList.add("hidden");adminMessage("");
+  refreshBuildBadge().catch(()=>{});
  document.querySelectorAll("[data-admintab]").forEach(b=>{
   const selected=b.dataset.admintab===section;
   b.classList.toggle("active",selected);
