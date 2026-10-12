@@ -107,3 +107,7 @@ The approved navy/blue/white Beacon design is now integrated in the **primary Wi
 Android's previously separate premium UI design kit is now installed in the **actual native Android app module** and used by MainActivity: branded header, lighter sign-in and roster styling, flat fields/buttons, contact rows and distinct incoming/outgoing message bubbles. The manifest selects BeaconTheme. Android source advances to v0.8.0.
 
 Both Windows/Linux premium preview binaries remain available under releases/previews as UI references and runnable *limited* test clients, never as substitutes for the full Go/Fyne client. Source integration does not mean Fyne and Android Gradle have compiled: full supported GUI binaries and an APK remain mandatory release gates.
+
+## Current build rule: local-only, no GitHub Actions
+
+As instructed, Beacon's GitHub Actions workflow files have been **deleted**. The approved build process is to compile and verify Windows, Linux, Android and Docker/server artifacts locally, then use GitHub only for source control and publishing verified outputs. The [local-only build policy](docs/LOCAL-ONLY-BUILD-POLICY.md) overrides earlier workflow/runner setup references throughout historical documentation.

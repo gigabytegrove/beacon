@@ -1,3 +1,7 @@
+# Beacon local builds and acceptance tests
+
+**Current policy:** [Local-only builds](LOCAL-ONLY-BUILD-POLICY.md). All GitHub Actions files were removed. Do not follow any workflow-dispatch or self-hosted-runner suggestions in archived documentation.
+
 # Beacon: build and test the clients without GitHub-hosted runners
 
 Last checked: **October 11, 2026**.
@@ -75,3 +79,4 @@ The four workflows can run on the user's trusted build machines if hosted runner
 **Registration and execution instructions:** [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md). Use dedicated nonproduction build workstations, not the live Dokploy host. Running a build on a trusted runner is not a bypass; reporting success without it would be.
 
 Self-hosted CI only runs for trusted pushes and owner-triggered manual dispatches. Pull-request workflows intentionally remain GitHub-hosted for isolation. Result artifacts have seven-day GitHub Actions retention; this changes no test requirements.
+
