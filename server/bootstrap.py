@@ -2,7 +2,7 @@
 
 Codes are stored in the persistent, container-owner-only data directory. The
 HTTP API never returns a setup code. On first startup it is printed to the
-private Dokploy container log so the server owner can claim the first admin.
+private container log so the server owner can claim the first admin.
 """
 from __future__ import annotations
 
