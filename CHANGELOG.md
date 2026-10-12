@@ -1,5 +1,18 @@
 # Beacon changelog
 
+## 0.9.0 (development) — Docker-platform-independent native GitHub updater
+
+- Removed the Dokploy-specific updater implementation, credential onboarding, Compose API calls, and browser configuration; Docker is only Beacon's hosting/runtime platform.
+- Introduced a **built-in native launcher** as the image entrypoint. It starts Beacon from the image or a GitHub-verified application-code release stored on the existing persistent data volume; does not use root, Docker socket or an extra updater container.
+- Administrator-only Updates page includes **Check GitHub**, **Download & install**, **Refresh** and **Roll back**, with current version, running commit, latest GitHub commit, and persisted installation status.
+- Uses public GitHub API on `main` to obtain a commit and source tree; downloads that immutable source archive over HTTPS, verifies each extracted server file against its Git blob hash, compiles Python source, records archive SHA-256 and checks for dependency changes before activation.
+- Supervisor switches to the new release with atomic state, graceful child process termination and a revision-matched `/health` check. Startup failures and early exits trigger automatic return to previous code without replacing SQLite messages or users.
+- Preserves existing `beacon-data` mounts and application features. Removes the Dokploy-specific updater variables from Compose examples; **any Docker host** can run Beacon.
+- A one-time rebuild of the image is required to install this supervisor into older containers. Subsequent **compatible application-code** updates happen in Beacon; base image, dependency and supervisor-binary changes still require image rebuilds.
+- Replaced obsolete Dokploy updater tests with GitHub API, admin authorization, Git blob integrity, status, queue, and rollback tests; corrected stale server version checks.
+- Native implementation has not yet passed live Docker update/rollback acceptance testing, and has not been deployed to the user's running instance.
+
+
 ## 0.8.5 (development) — In-app server updates without Compose editing
 
 - Added **Control Center → Updates → Connect to Dokploy**: enter a Dokploy HTTPS URL, Compose service ID and API key once from Beacon itself.
