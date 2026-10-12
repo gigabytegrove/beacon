@@ -56,3 +56,10 @@ The independent Go [Beacon Probe](../tools/beacon-probe/README.md) can be built 
 ## Actual GitHub build runners
 
 When GitHub-hosted runners fail before any command runs, use the **same workflows on isolated, preconfigured self-hosted build machines**. The GitHub Actions variable `BEACON_USE_SELF_HOSTED_RUNNERS=true` selects those workers for pushes, or the manual `runner=self-hosted` option selects them per run. All compiler and artifact validations remain mandatory. See [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md). Both EXE and Linux tar.gz must actually exist before telling users they can download them.
+
+
+## Locally compiled visual preview archive
+
+The repository also contains **separately labeled premium Go Win32/X11 test clients** in `releases/previews/2026-10-11/`, with source in `clients/desktop-native-preview`. The Windows preview is packaged as a ZIP containing an EXE; the Linux preview is a tar.gz. Their checksums are listed in the preview directory and verified in tests.
+
+This preview is **not** the same application as the full Go/Fyne primary release target described above. Build it independently using [BUILDING.md](../clients/desktop-native-preview/BUILDING.md). It compiles using native platform APIs without bundling Python or third-party Go dependencies. Windows runtime and Android APK verification remain outstanding.

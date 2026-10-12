@@ -96,3 +96,10 @@ Self-hosted runner selection is **not permitted for pull_request events** to avo
 `clients/desktop-go/internal/beacon/sync.go` introduces `LatestEventID`, `EventBatch`, and `CatchUp`. The standard-library `httptest` regressions in `sync_test.go` verify account cursor seeding, multi-page catch-up, rejecting repeated/out-of-order events and invalid cursors, retry without duplicate delivery after a 503, callback interruption, bounded pages and cancellation. These tests were run locally with `go test -race -count=1 ./internal/beacon` and `go vet ./internal/beacon`.
 
 This **only verifies the Go API package**, not the Fyne windows or Android APK. The full Fyne/Gradle build gate still must execute successfully before client downloads are considered accepted. See [Multi-device Delivery](MULTI-DEVICE-DELIVERY.md).
+
+
+## Premium visual-preview import
+
+`clients/desktop-native-preview` contains the Go standard-library/native-OS graphics prototype with actual local test builds in `releases/previews/2026-10-11`. It is **not the same Go module** as the primary `clients/desktop-go` Fyne app; do not splice their dependencies or build paths together. Its generated raster assets and Android design files are kept as reproducible source/visual references. See [Preview docs](PREMIUM-PREVIEW.md) and [building instructions](../clients/desktop-native-preview/BUILDING.md).
+
+The preview test artifacts were built locally without GitHub Actions; historical GitHub runner failures are separate and still unresolved. No tests or compilation of the primary Go/Fyne or Android APK should be marked passing on the strength of the preview's own successful smoke tests.
