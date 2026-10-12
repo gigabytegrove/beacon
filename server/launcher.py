@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import signal
 import subprocess
 import sys
@@ -111,6 +112,30 @@ def _signal(_sig, _frame):
     _stop_child()
 
 
+def _prune(keep_active="", keep_previous="", keep_count=3):
+    """Keep a few rollback points without growing the persistent volume forever."""
+    directory = DATA / "releases"
+    if not directory.exists():
+        return
+    all_releases = []
+    for entry in directory.iterdir():
+        if entry.is_symlink() or not entry.is_dir():
+            continue
+        if len(entry.name) != 40 or any(c not in "0123456789abcdef" for c in entry.name):
+            continue
+        if _release(entry.name):
+            all_releases.append(entry)
+    all_releases.sort(key=lambda item: item.stat().st_mtime, reverse=True)
+    retained = {keep_active, keep_previous}
+    retained.update(path.name for path in all_releases[:max(keep_count, 2)])
+    for release in all_releases:
+        if release.name not in retained:
+            try:
+                shutil.rmtree(release)
+            except OSError as error:
+                print("Beacon: could not prune old release: " + str(error), flush=True)
+
+
 def _version(sha):
     if not sha:
         return os.getenv("BEACON_VERSION", "image")
@@ -152,6 +177,7 @@ def main():
                 _write(DATA / "status.json", {
                     "state": "rolled_back",
                     "message": "New version failed its startup health check. Previous version restored.",
+                    "last_failure": "Startup health check failed for " + selected,
                     "revision": active,
                 })
                 continue
@@ -163,10 +189,14 @@ def main():
             continue
         failures = 0
         print("Beacon: healthy version=" + _version(selected) + " revision=" + (selected or "image"), flush=True)
+        prior_status = _read(DATA / "status.json")
         _write(DATA / "status.json", {
             "state": "running", "message": "Server healthy.",
             "revision": selected or expected,
+            "last_failure": prior_status.get("last_failure", ""),
         })
+        previous = _read(active_file).get("previous") or ""
+        _prune(selected, previous)
         probation_until = time.monotonic() + 60
         switching = False
         while not stop_requested and proc.poll() is None:
@@ -196,6 +226,7 @@ def main():
             _write(DATA / "status.json", {
                 "state": "rolled_back",
                 "message": "Updated server exited during its health probation. Previous version restored.",
+                "last_failure": "Updated server exited during the health probation: " + selected,
                 "revision": active,
             })
         else:
