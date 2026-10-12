@@ -109,3 +109,15 @@ Historically, SQLite-backed JSON sometimes serializes `is_admin` and `muted` as 
 `GET /api/events?after=N&limit=P` returns ascending message IDs and `next_cursor` (the last returned ID, or N when there are no events). The client's cursor advances **only after messages have been accepted by its local delivery callback**. It rejects non-monotonic IDs or cursor mismatches; a temporary failure must not skip queued messages.
 
 **Receipt semantics:** `POST /api/conversations/{peer_id}/read` with `{"through_id":N}` should be sent only after that peer's incoming message is displayed in an active chat view, never as a side-effect of background polling or merely downloading history. This ensures that Windows, Linux and Android remain synchronized without one background device improperly clearing another's unread counts. See [Multi-device Delivery](MULTI-DEVICE-DELIVERY.md).
+
+
+## First-run setup (server v0.8.2)
+
+| Method | Endpoint | Authentication | Description |
+| --- | --- | --- | --- |
+| GET | /api/setup/status | none | Returns only `{"setup_required": true\|false}`, never the secret code |
+| POST | /api/setup | One-time setup code | Accepts `setup_code`, `username` (3–32 characters), `display_name`, `password` (at least 12 characters); creates the first admin only while the database is empty and responds 201 |
+
+The server generates a 32-byte random setup code on the first start with an empty user table and no explicit legacy administrator password, persists it securely under the SQLite volume, and prints it to the private container logs. Invalid codes return 403, five failures within 15 minutes trigger 429 per source IP, and attempts to repeat setup after any account exists return 409. After creating the admin the code is deleted. The administrator must then sign in normally at `POST /api/login`.
+
+Do not expose the setup code in the web API or unauthenticated logs. Avoid exposing an unclaimed Beacon instance on the public internet.

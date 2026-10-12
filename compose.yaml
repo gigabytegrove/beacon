@@ -7,7 +7,8 @@ services:
     environment:
       BEACON_DB: /data/beacon.db
       BEACON_ADMIN_USERNAME: ${BEACON_ADMIN_USERNAME:-admin}
-      BEACON_ADMIN_PASSWORD: ${BEACON_ADMIN_PASSWORD:?Set BEACON_ADMIN_PASSWORD in .env}
+      # Optional legacy bootstrap. Leave empty for the first-run setup wizard.
+      BEACON_ADMIN_PASSWORD: ${BEACON_ADMIN_PASSWORD:-}
     volumes:
       - beacon-data:/data
     security_opt:

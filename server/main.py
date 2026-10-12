@@ -21,6 +21,7 @@ DB = os.getenv("BEACON_DB", "/data/beacon.db")
 LOCK = threading.RLock()
 SESSION_AGE = 30 * 86400
 LOGIN_ATTEMPTS = defaultdict(deque)
+SETUP_ATTEMPTS = defaultdict(deque)
 CHANNELS: dict[int, set[WebSocket]] = defaultdict(set)
 WS_SESSIONS: dict[WebSocket, int] = {}
 USERNAME = re.compile(r"^[a-zA-Z0-9_.-]{3,32}$")
@@ -107,15 +108,31 @@ def init_db():
         )
         from .social import migrate
         migrate(db)
+        # Existing installations are never reset. A password supplied by older
+        # deployments remains supported; fresh installations use the wizard.
+        from .bootstrap import obtain_setup_code, retire_setup_code
         if db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0:
-            username = os.getenv("BEACON_ADMIN_USERNAME", "admin")
             password = os.getenv("BEACON_ADMIN_PASSWORD", "")
-            if not USERNAME.fullmatch(username) or len(password) < 12 or password == "REPLACE_WITH_A_LONG_RANDOM_PASSWORD":
-                raise RuntimeError("Set a valid BEACON_ADMIN_USERNAME and a unique BEACON_ADMIN_PASSWORD (minimum 12 chars)")
-            db.execute(
-                "INSERT INTO users(username,display_name,password_hash,is_admin,created_at) VALUES (?,?,?,?,?)",
-                (username, username, password_hash(password), 1, int(time.time())),
-            )
+            if password:
+                username = os.getenv("BEACON_ADMIN_USERNAME", "admin")
+                if not USERNAME.fullmatch(username) or len(password) < 12 or password == "REPLACE_WITH_A_LONG_RANDOM_PASSWORD":
+                    raise RuntimeError("Invalid legacy BEACON_ADMIN_USERNAME or BEACON_ADMIN_PASSWORD")
+                db.execute(
+                    "INSERT INTO users(username,display_name,password_hash,is_admin,created_at) VALUES (?,?,?,?,?)",
+                    (username, username, password_hash(password), 1, int(time.time())),
+                )
+                retire_setup_code(DB)
+            else:
+                code = obtain_setup_code(DB)
+                print("", flush=True)
+                print("===== BEACON FIRST-RUN ADMIN SETUP =====", flush=True)
+                print("Open Beacon in your browser and choose Create administrator.", flush=True)
+                print("SETUP CODE: " + code, flush=True)
+                print("Copy this one-time code into the setup wizard.", flush=True)
+                print("Only share this code with the person configuring Beacon.", flush=True)
+                print("========================================", flush=True)
+        else:
+            retire_setup_code(DB)
         db.execute("DELETE FROM sessions WHERE expires_at <= ?", (int(time.time()),))
 
 
@@ -134,7 +151,7 @@ async def lifespan(app):
             pass
 
 
-app = FastAPI(title="Beacon", version="0.8.0", lifespan=lifespan)
+app = FastAPI(title="Beacon", version="0.8.2", lifespan=lifespan)
 
 
 def auth_token(token):
@@ -163,6 +180,13 @@ class Credentials(BaseModel):
     device_name: str = Field(min_length=1, max_length=80)
 
 
+class FirstRunAdmin(BaseModel):
+    setup_code: str = Field(min_length=16, max_length=128)
+    username: str = Field(min_length=3, max_length=32)
+    display_name: str = Field(min_length=1, max_length=80)
+    password: str = Field(min_length=12, max_length=256)
+
+
 class NewUser(BaseModel):
     username: str
     password: str = Field(min_length=12, max_length=256)
@@ -182,6 +206,53 @@ class NewMessage(BaseModel):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/setup/status")
+def setup_status():
+    """Expose only whether setup is needed, never the private setup code."""
+    with LOCK, connection() as db:
+        required = db.execute("SELECT COUNT(*) FROM users").fetchone()[0] == 0
+    return {"setup_required": required}
+
+
+@app.post("/api/setup", status_code=201)
+def first_run_setup(data: FirstRunAdmin, request: Request):
+    """Claim an empty installation using the code from private Dokploy logs.
+
+    A one-time claim always precedes normal login; setup never opens again once
+    any account exists in the persistent database.
+    """
+    from .bootstrap import matches_setup_code, retire_setup_code
+    ip = request.client.host if request.client else "unknown"
+    now = time.monotonic()
+    if not USERNAME.fullmatch(data.username):
+        raise HTTPException(422, "Username must be 3-32 letters, numbers, _, . or -")
+    if not data.display_name.strip():
+        raise HTTPException(422, "Display name cannot be empty")
+    if len(data.password.strip()) < 12:
+        raise HTTPException(422, "Choose a password of at least 12 characters")
+    with LOCK:
+        attempts = SETUP_ATTEMPTS[ip]
+        while attempts and attempts[0] < now - 900:
+            attempts.popleft()
+        with connection() as db:
+            # BEGIN IMMEDIATE serializes first-user claims across processes.
+            db.execute("BEGIN IMMEDIATE")
+            if db.execute("SELECT 1 FROM users LIMIT 1").fetchone():
+                raise HTTPException(409, "Beacon is already configured; sign in instead")
+            if len(attempts) >= 5:
+                raise HTTPException(429, "Too many setup attempts; try again later")
+            if not matches_setup_code(DB, data.setup_code):
+                attempts.append(now)
+                raise HTTPException(403, "Incorrect setup code. Check the Dokploy Beacon logs.")
+            db.execute(
+                "INSERT INTO users(username,display_name,password_hash,is_admin,created_at) VALUES (?,?,?,?,?)",
+                (data.username, data.display_name.strip(), password_hash(data.password), 1, int(time.time())),
+            )
+        attempts.clear()
+        retire_setup_code(DB)
+    return {"ok": True, "username": data.username, "message": "Administrator created. Sign in to Beacon."}
 
 
 @app.get("/")

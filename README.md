@@ -18,11 +18,11 @@
 
 The Go desktop code includes authenticated sign-in, independent device sessions, secure *optional* saved login through OS credential vaults, buddy groups and aliases, presence, contact avatars, pop-out individual conversations, unread counts, typing indicators, sign-on/message notifications, buddy management, profile/photo/password changes, device revocation and message-history search. Fyne provides platform-native-style widgets, multiple windows and system tray support.
 
-**Verification:** Source code and CI workflows are committed as development artifacts. Compiled Windows/Linux executables are **not considered available or validated unless their actual workflows successfully run and the binaries pass target-platform testing**. Earlier GitHub Actions runs in this private repository failed before runners were allocated. Linux binaries may depend on typical system graphics/X11/OpenGL libraries provided by the operating system; no Python runtime is required.
+**Verification:** Source code and local build scripts are committed. GitHub Actions workflows were removed at the owner's direction. Compiled Windows/Linux executables are **not considered available or validated unless their actual workflows successfully run and the binaries pass target-platform testing**. Earlier Earlier GitHub Actions runs failed before allocation; all workflows were subsequently deleted. Linux binaries may depend on typical system graphics/X11/OpenGL libraries provided by the operating system; no Python runtime is required.
 
 ## Deploy the server with Dokploy
 
-This is the required server deployment method. In Dokploy create **Compose → Docker Compose** (not Stack), connect private GitHub repository `gigabytegrove/beacon`, branch `main`, with **Compose Path `./compose.dokploy.yaml`**. In Environment set `BEACON_ADMIN_PASSWORD` to a unique 12+ character secret. Click **Deploy**. The service uses external `dokploy-network` and stable persistent named volume `beacon-data`; the container listens on port 8765.
+This is the required server deployment method. In Dokploy create **Compose → Docker Compose** (not Stack), connect private GitHub repository `gigabytegrove/beacon`, branch `main`, with **Compose Path `./compose.dokploy.yaml`**. Use a **Git source, not Raw Compose** (raw mode does not check out the Dockerfile). No admin password environment variable is required: click **Deploy**, find the one-time **SETUP CODE** in Beacon's private Dokploy logs, and complete the administrator creation wizard at the Beacon URL. The service uses external `dokploy-network` and stable persistent named volume `beacon-data`; the container listens on port 8765.
 
 **Do not try to clone the repository into `/root/beacon` or run shell Compose commands on the Dokploy server.** Update the Compose service by redeploying GitHub `main` from the Dokploy UI. Back up the data volume first. Restrict the LAN port with firewall rules or configure HTTPS through a Dokploy Domain. See [Dokploy Guide](docs/DOKPLOY.md).
 
@@ -56,7 +56,7 @@ No license has been granted for this private repository; the owner retains right
 
 ## Hands-on testing and manual client builds
 
-GitHub-hosted runners are still failing before they execute any steps. The project now includes explicit Windows/Android PowerShell and Linux Bash builders under `scripts/`, and the Windows/Linux CI workflows use those same builders. The compiled GUI binaries must be produced on build workstations with Go/Fyne build prerequisites installed, **not** on ordinary user computers.
+GitHub Actions has been deliberately disabled. The project includes Windows/Android PowerShell and Linux Bash builders under `scripts/`. The compiled GUI binaries must be produced on build workstations with Go/Fyne build prerequisites installed, **not** on ordinary user computers.
 
 A separate dependency-free Go **Beacon Probe** is available for preflight testing of server health and authenticated APIs; it is **not** a graphical messenger. See [Build and Test](docs/BUILD-AND-TEST.md) and [Probe](tools/beacon-probe/README.md). Actual EXE/APK GUI downloads should not be claimed until built and tested.
 
@@ -115,3 +115,10 @@ As instructed, Beacon's GitHub Actions workflow files have been **deleted**. The
 ## October 12 local test builds
 
 The [Windows and Linux locally compiled test builds](releases/previews/2026-10-12/README.md) are available with hashes, source and completed Go/Linux mock-server tests. They improve login reliability, missed-message notifications, and revoked-session behavior. They are native Go preview applications rather than the full Go/Fyne client and **do not include an Android APK**. GitHub Actions remains completely removed.
+
+
+## First-run administration (server 0.8.2)
+
+For an empty `beacon-data` database, Beacon **does not require a preconfigured password**. The server logs a cryptographically random one-time setup code to its private Dokploy logs. The web page detects an unclaimed installation and guides you through creating your own admin username and password. Setup is disabled forever after any user exists; redeploying never resets established accounts. The code is deleted after a successful claim. Existing explicitly configured environment-admin passwords are still honored on brand-new databases only.
+
+**Important deployment prerequisite:** The supplied `compose.dokploy.yaml` must be used with a Git-sourced Dokploy Compose service. Pasting it into a *Raw Compose* editor produces `Dockerfile: no such file or directory` because raw mode does not check out the repository. See [the corrected Dokploy guide](docs/DOKPLOY.md).

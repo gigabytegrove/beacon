@@ -28,7 +28,7 @@ Beacon is designed for a trusted LAN first, not unprotected public internet expo
 
 ## Deployment checklist
 
-1. Use a unique initial admin password and keep `.env` protected.
+1. On a fresh installation use the one-time setup code from private container logs to create a unique administrator username and strong password. Never disclose the setup code or expose first-run setup on public TCP 8765.
 2. Restrict port 8765 with host/firewall or LAN VLAN rules. Do not public-forward it.
 3. Use HTTPS/WSS with a real certificate for remote or untrusted connections.
 4. Configure the proxy to pass the correct Host and WebSocket Upgrade headers.
@@ -51,7 +51,7 @@ The encrypted local token files do **not** make chats end-to-end encrypted; the 
 
 ## Dokploy deployment boundary
 
-The dedicated Dokploy file defaults to publishing TCP 8765 on all host interfaces; enforce the host firewall or set `BEACON_BIND_IP` to a specific LAN interface. With Dokploy Domains and HTTPS, use `BEACON_BIND_IP=127.0.0.1` for host-local access, leaving proxy access through `dokploy-network`. Configure the admin bootstrap password only in Dokploy's Environment UI, not in committed files. Back up and restrict the persistent volume `beacon-data`.
+The dedicated Dokploy file defaults to publishing TCP 8765 on all host interfaces; enforce the host firewall or set `BEACON_BIND_IP` to a specific LAN interface. With Dokploy Domains and HTTPS, use `BEACON_BIND_IP=127.0.0.1` for host-local access, leaving proxy access through `dokploy-network`. The first-run wizard requires no password in Dokploy Environment; its one-time setup code is shown in the private Beacon container logs and deleted after use. If using legacy env bootstrap instead, configure its secret only in Dokploy Environment, not committed files. Back up and restrict the persistent volume `beacon-data`.
 
 ## v0.7.0 desktop session storage and search
 

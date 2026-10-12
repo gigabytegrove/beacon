@@ -1,5 +1,16 @@
 # Beacon changelog
 
+## 0.8.2 — Dokploy first-run setup and raw-source deployment fix
+
+- New first-run **administrator creation wizard** in the served web UI; no default account and no mandatory administrator password environment variable.
+- Server generates a strong one-time setup code on first boot, stores it in the private persistent volume (`0600`), prints it to private container logs, and deletes it after administrator creation.
+- Added `/api/setup/status` (only boolean status exposed) and `/api/setup` (code-gated, password-validated, single-claim, rate-limited), then directs the admin to sign in normally.
+- Preserves all existing databases and optional legacy environment-based provisioning for previously configured deployments; never resets an existing account on redeploy.
+- Dokploy Compose and standalone Compose no longer require a prepopulated `BEACON_ADMIN_PASSWORD`.
+- Corrected Dokploy documentation to distinguish **Git-sourced Compose** from **Raw Compose**; `build.context: .` cannot find the Dockerfile when deploying pasted raw YAML with no source checkout.
+- Added setup-code unit tests, FastAPI setup-flow integration tests, and corrected old repository assertions that still expected deleted GitHub Actions workflows.
+- GitHub Actions remains fully disabled. Container builds are performed by Dokploy from Git-sourced repository checkout, and desktop/mobile builds remain local-only.
+
 ## Locally built native preview 0.8.1 — October 12
 
 - Compiled real Windows x64 Win32 and Linux x64 X11 preview GUIs directly in the local build environment, without GitHub Actions.
