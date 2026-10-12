@@ -70,7 +70,7 @@ def test_post_aliases_for_mobile_transport():
             assert result["nickname"] == "Allie"
             assert result["group_name"] == "Friends"
             assert result["muted"] == 1
-            assert main.app.version == "0.6.0"
+            assert main.app.version == "0.9.0"
 
 
 def test_latest_event_cursor_scoped_to_current_account():
