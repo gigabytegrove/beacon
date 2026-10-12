@@ -1,7 +1,9 @@
 from pathlib import Path
 p=str(Path(__file__).resolve().parent/'cmd'/'beacon'/'ui.go')
-s=open(p).read();subs=[('renderLogin','paintLogin'),('renderRoster','paintRoster'),('renderChat','paintChat'),('renderDirectory','paintDirectory')]
-for origin,replacement in subs:
+s=open(p).read()
+# Named mappings, not credential pairs; maintain the same source transformation.
+subs=dict(renderLogin='paintLogin',renderRoster='paintRoster',renderChat='paintChat',renderDirectory='paintDirectory')
+for origin,replacement in subs.items():
     a='func (c *ClientState) '+origin+'('
     st=s.index(a)
     beg=s.index('{',st)
