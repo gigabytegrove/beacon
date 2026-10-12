@@ -1,5 +1,16 @@
 # Beacon changelog
 
+## 0.8.5 (development) — In-app server updates without Compose editing
+
+- Added **Control Center → Updates → Connect to Dokploy**: enter a Dokploy HTTPS URL, Compose service ID and API key once from Beacon itself.
+- The server verifies the selected Compose service through Dokploy's `compose.one` API and stores the key in a persistent 0600 owner-only file beside the database, never in the browser-facing response, git repository, or settings table.
+- The admin-only **Build & deploy latest main** button requests `compose.redeploy`, keeps `freshVolumes=false`, and rate-limits duplicate update requests. Uses the existing Dokploy deployment; no Docker socket, privileged container, GitHub Actions, GHCR image, or recurring Compose edits required.
+- Settings survive container replacement; administrators can change or disconnect the stored integration from the UI. Failed verification never overwrites the saved credential.
+- Added protected configuration API and tests for admin-only permissions, persistence, restrictive file modes, invalid URLs, and failure isolation; retained existing redeploy regression tests.
+- Only the initial installation of 0.8.5 requires redeploying the older currently running server; a running image cannot update itself with features it does not yet contain.
+- Update requests are accepted asynchronously; the UI does not yet provide a reliable Dokploy build-stage progress stream or automated rollback.
+
+
 ## 0.8.4 (development) — Account management repair and Control Center polish
 
 - Replaced the old click-driven Create Account fields with a real validated form: required username/display name/password, constrained usernames, password confirmation, password visibility, visible pending state, and errors that remain in the open dialog.
