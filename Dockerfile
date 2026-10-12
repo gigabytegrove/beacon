@@ -1,4 +1,11 @@
 FROM python:3.12-slim
+ARG BEACON_VERSION=0.8.2
+ARG BEACON_REVISION=unknown
+LABEL org.opencontainers.image.title="Beacon Messenger" \
+      org.opencontainers.image.source="https://github.com/gigabytegrove/beacon" \
+      org.opencontainers.image.version="${BEACON_VERSION}" \
+      org.opencontainers.image.revision="${BEACON_REVISION}"
+ENV BEACON_VERSION=${BEACON_VERSION} BEACON_REVISION=${BEACON_REVISION}
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 BEACON_DB=/data/beacon.db
 WORKDIR /app
 COPY requirements.txt .
