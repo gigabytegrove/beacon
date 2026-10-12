@@ -1,5 +1,15 @@
 # Beacon changelog
 
+## 0.9.1 — Account creation and deployment verification hotfix
+
+- Fixed an invalid duplicated Pydantic `NewUser.display_name` declaration in `server/main.py`, which caused updated server imports to fail before account creation could work.
+- Added Python syntax compilation and a full server import check to the Docker build, preventing broken Python sources from being deployed silently.
+- Added the real served HTML's SHA-256 fingerprint to `GET /health` and an always-visible running version/revision badge in the Control Center. Deployments can now verify the actual UI, not just the environment version.
+- Improved account-creation server error wording in the browser and extended account-management regression checks.
+- The isolated CLI deployment smoke test exercises first-time administrator setup, login, account creation, account listing, duplicate rejection, and static HTML hash before touching the existing named data volume.
+- A production deployment to dockeradm has not been performed by ChatGPT; live installation remains to be verified on the host.
+
+
 ## 0.9.0 (development) — Docker-platform-independent native GitHub updater
 
 - Removed the Dokploy-specific updater implementation, credential onboarding, Compose API calls, and browser configuration; Docker is only Beacon's hosting/runtime platform.
