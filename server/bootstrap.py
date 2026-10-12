@@ -49,7 +49,8 @@ def matches_setup_code(db_path: str, submitted: str) -> bool:
     except (OSError, ValueError, UnicodeError):
         return False
     if not 32 <= len(code) <= 128:
-        return False\n    return hmac.compare_digest(code, submitted.strip())
+        return False
+    return hmac.compare_digest(code, submitted.strip())
 
 
 def retire_setup_code(db_path: str) -> None:
