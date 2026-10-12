@@ -6,6 +6,7 @@ No container-engine socket, orchestrator API, sidecar or root privilege needed.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -51,6 +52,17 @@ def _release(sha):
     meta = _read(folder / "release.json")
     if meta.get("revision") != sha:
         return None
+    files = meta.get("files")
+    if not isinstance(files, dict) or not files or "server/main.py" not in files:
+        return None
+    for name, digest in files.items():
+        if not isinstance(name, str) or not name.startswith("server/") or not isinstance(digest, str):
+            return None
+        path = folder / name
+        if ".." in Path(name).parts or path.is_symlink() or not path.is_file():
+            return None
+        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            return None
     return folder
 
 
