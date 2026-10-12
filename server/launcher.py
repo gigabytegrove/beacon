@@ -55,14 +55,17 @@ def _release(sha):
     files = meta.get("files")
     if not isinstance(files, dict) or not files or "server/main.py" not in files:
         return None
-    for name, digest in files.items():
-        if not isinstance(name, str) or not name.startswith("server/") or not isinstance(digest, str):
-            return None
-        path = folder / name
-        if ".." in Path(name).parts or path.is_symlink() or not path.is_file():
-            return None
-        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
-            return None
+    try:
+        for name, digest in files.items():
+            if not isinstance(name, str) or not name.startswith("server/") or not isinstance(digest, str):
+                return None
+            path = folder / name
+            if ".." in Path(name).parts or path.is_symlink() or not path.is_file():
+                return None
+            if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+                return None
+    except OSError:
+        return None
     return folder
 
 
