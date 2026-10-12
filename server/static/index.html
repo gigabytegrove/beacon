@@ -30,9 +30,38 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 #toasts{position:fixed;bottom:15px;right:15px;display:flex;flex-direction:column;gap:8px;z-index:10;pointer-events:none}
 .toast{background:#275680;border:1px solid #6390b9;border-radius:12px;padding:12px 16px;box-shadow:0 10px 40px #0007;max-width:340px;pointer-events:auto}
 .error{color:#ff9c9c;margin-top:10px}
+.setup-tag{font-size:11px;font-weight:800;letter-spacing:.14em;color:#83c6ff;margin-bottom:12px}
+.setup-help{background:#10253e;border:1px solid #365b82;border-radius:12px;padding:16px;margin:20px 0;line-height:1.6}
+.setup-help strong{color:#a8d8ff}
+.setup-help p{margin-top:7px;color:#c1d6eb}
+#setup.auth{margin:3vh auto;max-width:510px;max-height:94dvh;overflow:auto}
+#setup h1{font-size:29px;line-height:1.2}
+#setup form{margin-top:16px}
+#setup input{margin-top:6px}
+#setup button[type=submit]{background:#247feb;border-color:#4b99f3;font-weight:700}
+#setup button[type=submit]:hover{background:#3990f5}
+#setup button[type=submit]:disabled{opacity:.55}
 .buddy-group{border-bottom:1px solid #294763}.buddy-group>summary{list-style:none;cursor:pointer;padding:12px 16px;background:#193752;color:#d7e8f7;font-weight:700;display:flex;justify-content:space-between}.buddy-group>summary::before{content:"▾";color:#8fc3f2;margin-right:12px}.buddy-group:not([open])>summary::before{content:"▸"}.buddy-group>summary::-webkit-details-marker{display:none}.group-empty{padding:12px 19px;color:#8cabc7;font-size:12px}.buddy .buddy-edit{font-size:17px;padding:4px 9px;border:0;background:transparent;flex-shrink:0}.buddy .buddy-edit:hover{background:#34577a}.buddy .muted-indicator{font-size:12px;color:#ffd085}.settings-row{display:flex;gap:12px;align-items:center;margin:12px 0}.settings-row input{width:auto}#groupsList>div{display:flex;align-items:center;gap:8px;padding:6px 0}#groupsList>div>span{flex:1}.small-button{font-size:12px;padding:7px 9px}#buddyDialog select{margin:7px 0}#buddyDialog button.danger{background:#762b37;border-color:#d25564}
 </style></head>
 <body>
+<section id="setup" class="auth hidden">
+  <div class="setup-tag">WELCOME TO BEACON</div>
+  <h1>◉ Let's get you set up.</h1>
+  <p class="muted">Create your first administrator. No default password and no cloud account required.</p>
+  <div class="setup-help">
+    <strong>Step 1 · Get your one-time setup code</strong>
+    <p>Open your Beacon service in <b>Dokploy → Logs</b>. Find <b>BEACON FIRST-RUN ADMIN SETUP</b> and copy the <b>SETUP CODE</b>. Only someone who can see the private server logs should complete setup.</p>
+  </div>
+  <form id="setupForm">
+    <label>One-time setup code<input id="setupCode" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="128" required placeholder="Paste the code from Dokploy logs"></label>
+    <label>Administrator username<input id="setupUsername" autocomplete="username" minlength="3" maxlength="32" pattern="[A-Za-z0-9_.-]{3,32}" required placeholder="e.g. admin"></label>
+    <label>Display name<input id="setupDisplay" maxlength="80" required placeholder="Your name"></label>
+    <label>Administrator password<input id="setupPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required placeholder="At least 12 characters"></label>
+    <label>Confirm password<input id="setupConfirm" type="password" autocomplete="new-password" minlength="12" maxlength="256" required></label>
+    <button id="setupSubmit" type="submit">Create administrator →</button>
+  </form>
+  <p id="setupError" class="error" role="alert"></p>
+</section>
 <section id="login" class="auth"><h1>◉ Beacon</h1><p class="muted">A familiar place to find your people.</p><form id="loginForm"><label>Username<input id="username" autocomplete="username" required></label><label>Password<input id="password" type="password" autocomplete="current-password" required></label><label>Device name<input id="device" maxlength="80" required></label><button>Sign in</button></form><p id="loginError" class="error" role="alert"></p></section>
 <section id="roster" class="window hidden"><header class="window-title"><strong class="brand">◉ Beacon</strong><span class="title-right" id="connectStatus">Connecting…</span></header>
 <div class="profile"><div id="ownAvatar" class="avatar large">B</div><div class="profile-details"><strong id="ownName"></strong><small id="ownStatus">On your network</small></div><button id="editProfile" title="Edit profile">Edit</button></div>
@@ -123,5 +152,50 @@ $("devices").onclick=async()=>{try{const all=await api("/sessions");const root=$
 $("enableAlerts").onclick=async()=>{if("Notification" in window){const result=await Notification.requestPermission();toast(result==="granted"?"Notifications enabled":"Notifications unavailable or denied");}else toast("Browser notifications not supported here");};
 document.querySelectorAll("[data-close]").forEach(button=>button.onclick=()=>$(button.dataset.close).close());
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&chatId)loadHistory().catch(()=>{});});
-if(token)start();
+// Setup status only reveals whether the database has any accounts; the secret
+// setup code is never delivered over HTTP.
+async function loadSetupState(){
+ try {
+  const response=await fetch("/api/setup/status",{cache:"no-store"});
+  if(!response.ok)throw Error("Can't check first-run setup status ("+response.status+")");
+  const data=await response.json();
+  const needed=Boolean(data.setup_required);
+  $("setup").classList.toggle("hidden",!needed);
+  $("login").classList.toggle("hidden",needed);
+  if(needed){token=null;sessionStorage.removeItem("beacon_token");}
+  return needed;
+ }catch(error){
+  $("loginError").textContent="Unable to contact the Beacon server: "+error.message;
+  return false;
+ }
+}
+$("setupForm").onsubmit=async event=>{
+ event.preventDefault();
+ const error=$("setupError");
+ error.textContent="";
+ const pw=$("setupPassword").value;
+ if(pw!==$("setupConfirm").value){error.textContent="The passwords don't match.";return;}
+ if(pw.trim().length<12){error.textContent="Choose an administrator password with at least 12 characters.";return;}
+ const button=$("setupSubmit");
+ button.disabled=true;
+ try{
+  const response=await fetch("/api/setup",{
+   method:"POST",cache:"no-store",headers:{"Content-Type":"application/json"},
+   body:JSON.stringify({setup_code:$("setupCode").value.trim(),
+    username:$("setupUsername").value.trim(),
+    display_name:$("setupDisplay").value.trim(),
+    password:pw})
+  });
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw Error(typeof result.detail==="string"?result.detail:"Unable to create administrator.");
+  $("username").value=result.username;
+  $("setupForm").reset();
+  $("setup").classList.add("hidden");
+  $("login").classList.remove("hidden");
+  $("loginError").textContent="Administrator created. Sign in with the password you just chose.";
+  $("password").focus();
+ }catch(e){error.textContent=e.message;}
+ finally{button.disabled=false;}
+};
+loadSetupState().then(needed=>{if(!needed&&token)start();});
 </script></body></html>

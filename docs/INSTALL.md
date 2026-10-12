@@ -19,7 +19,7 @@ docker compose ps
 curl -fsS http://127.0.0.1:8765/health
 ~~~
 
-**Before starting:** Change the sample `BEACON_ADMIN_PASSWORD` in `.env` to a unique password with at least 12 characters. Keep the file private (`chmod 600 .env` on Linux). The bootstrap account is created only when the user database is empty. Changing the bootstrap password in `.env` **does not** reset an existing account. To change a password after installation, use the authenticated `POST /api/me/password` endpoint.
+**Before starting:** No administrator password in `.env` is required for new installations. Start the container, read the server's private log for the one-time `SETUP CODE`, visit the web interface to create the first administrator, and then log in. The setup secret is stored on the private SQLite data volume and deleted after claiming the first account. Explicit `BEACON_ADMIN_PASSWORD` is supported only as an optional legacy bootstrap for a completely empty database. Changing it never resets an existing account.
 
 Navigate to `http://YOUR-SERVER-IP:8765` and sign in. The server stores data under `/data/beacon.db` within its Docker volume.
 
@@ -94,10 +94,10 @@ curl -fsS http://127.0.0.1:8765/health
 
 ## Windows and Android clients
 
-Use the same server URL and user credentials on Windows and Android, with a separate device session for each installation. Windows packaging is described in [desktop README](../clients/desktop/README.md) and the [Windows Actions workflow](../.github/workflows/windows.yml). Android setup and optional background LAN monitoring are described in [Android README](../clients/android/README.md) and the [Android Actions workflow](../.github/workflows/android.yml).
+Use the same server URL and user credentials on Windows and Android, with a separate device session for each installation. Windows packaging is described in [desktop README](../clients/desktop/README.md) and the [manual desktop build instructions](../clients/desktop-go/README.md). Android setup and optional background LAN monitoring are described in [Android README](../clients/android/README.md) and the [Android local build instructions](../clients/android/README.md).
 
-Windows' remembered-session option is encrypted using Windows DPAPI. Android uses Android Keystore. Both store tokens for their own device sessions; do not copy local token files between devices. Only accept a downloadable installer when its workflow actually builds and uploads it.
+Windows' remembered-session option is encrypted using Windows DPAPI. Android uses Android Keystore. Both store tokens for their own device sessions; do not copy local token files between devices. Only accept a downloadable installer after the local build and target-platform tests succeed.
 
 ## Supported desktop installation as of v0.8.0
 
-Do **not** ask desktop users to install Python, Tkinter, pip, Go or Fyne. The primary Windows/Linux client is compiled from Go/Fyne into native binaries by the corresponding GitHub Actions workflows. The Windows deliverable is a versioned EXE; Linux ships a tar.gz with binary and unprivileged install script. See [Go client](../clients/desktop-go/README.md). Android continues to use its independent Java APK. The Docker server still runs on Dokploy.
+Do **not** ask desktop users to install Python, Tkinter, pip, Go or Fyne. The primary Windows/Linux client is compiled from Go/Fyne into native binaries using the manual build scripts. The Windows deliverable is a versioned EXE; Linux ships a tar.gz with binary and unprivileged install script. See [Go client](../clients/desktop-go/README.md). Android continues to use its independent Java APK. The Docker server still runs on Dokploy.

@@ -6,7 +6,7 @@
 
 ## Server won't start
 
-Run `docker compose ps` and `docker compose logs --tail=200 beacon`. Confirm `.env` has a unique bootstrap password, the data volume is writable and the host port isn't used by another program.
+Run `docker compose ps` and `docker compose logs --tail=200 beacon`. Confirm the data volume is writable and the host port isn't used by another program. A new installation shows the first-run admin wizard: find its one-time setup code in private container logs; no `.env` admin password is required.
 
 If Python reports a syntax error near `from .aim import router`, verify your checkout is updated to **v0.5.0 or later**: v0.4.0 accidentally contained literal escaped newlines in `server/main.py`.
 
@@ -58,7 +58,7 @@ On Windows/Linux, use the Profile and Devices buttons on the buddy list or Searc
 
 ## Go client not launching
 
-**Windows:** Use the verified versioned EXE from a successful Windows workflow. No Python/pip/Go installation is needed. An unsigned development binary may trigger SmartScreen; verify the artifact's origin and checksum. If secure remembered login fails, sign in again and confirm Windows Credential Manager is available.
+**Windows:** Use a verified locally built versioned EXE. No Python/pip/Go installation is needed. An unsigned development binary may trigger SmartScreen; verify the artifact's origin and checksum. If secure remembered login fails, sign in again and confirm Windows Credential Manager is available.
 
 **Linux:** Extract the versioned Go tarball, run `./install.sh` as your normal user, and launch `beacon` via your app menu or `~/.local/bin/beacon`. A graphical display and normal OpenGL/window-system shared libraries are required. Install missing system graphics packages using your distribution package manager if the loader reports a missing library. No Python runtime is required. Linux remembered login needs a Secret Service/keyring provider; it is optional, never plaintext.
 
@@ -71,6 +71,6 @@ On Windows/Linux, use the Profile and Devices buttons on the buddy list or Searc
 When Beacon's server returns 401 for a revoked/expired token, the Go desktop now clears its secure saved login and returns to the sign-in screen. This is different from a temporary LAN interruption, which keeps the current session and displays a connectivity warning. For large buddy lists, server presence is now batched; if you see server latency, check Dokploy resource usage, `/health`, and the mounted SQLite volume rather than repeatedly restarting the container.
 
 
-## Actions jobs fail before the first step
+## Historical note: GitHub Actions removed
 
-If all workflows show no runner and `steps=0`, no app tests were run. Check the owner account's Actions eligibility and billing status separately. For a genuine test/build path independent of hosted runner provisioning, register isolated self-hosted Windows/Linux machines as described in [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md). Ensure the exact labels are present and the workers are Online; otherwise jobs queue rather than compiling.
+Beacon's GitHub Actions workflows have been deleted at the owner's direction. Compile and validate client/server packages locally using the manual build scripts; no GitHub Actions jobs should be used.
