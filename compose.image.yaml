@@ -1,0 +1,41 @@
+# Deploy ONLY after ghcr.io/gigabytegrove/beacon:latest has been published.
+# The existing persistent database volume name remains beacon-data.
+services:
+  beacon:
+    image: ghcr.io/gigabytegrove/beacon:${BEACON_IMAGE_TAG:-latest}
+    pull_policy: always
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    environment:
+      BEACON_DB: /data/beacon.db
+      BEACON_DOKPLOY_URL: ${BEACON_DOKPLOY_URL:-}
+      BEACON_DOKPLOY_COMPOSE_ID: ${BEACON_DOKPLOY_COMPOSE_ID:-}
+      BEACON_DOKPLOY_API_KEY: ${BEACON_DOKPLOY_API_KEY:-}
+      BEACON_UPDATE_CHANNEL: image
+    volumes:
+      - beacon-data:/data
+    networks:
+      - dokploy-network
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8765/health', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+volumes:
+  beacon-data:
+    name: beacon-data
+
+networks:
+  dokploy-network:
+    external: true
