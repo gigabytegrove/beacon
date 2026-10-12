@@ -6,6 +6,11 @@ services:
       - "8765:8765"
     environment:
       BEACON_DB: /data/beacon.db
+      # Configure in Dokploy Environment; never put credentials in Git.
+      BEACON_DOKPLOY_URL: ${BEACON_DOKPLOY_URL:-}
+      BEACON_DOKPLOY_COMPOSE_ID: ${BEACON_DOKPLOY_COMPOSE_ID:-}
+      BEACON_DOKPLOY_API_KEY: ${BEACON_DOKPLOY_API_KEY:-}
+      BEACON_UPDATE_CHANNEL: git
       BEACON_ADMIN_USERNAME: ${BEACON_ADMIN_USERNAME:-admin}
       # Optional legacy bootstrap. Leave empty for the first-run setup wizard.
       BEACON_ADMIN_PASSWORD: ${BEACON_ADMIN_PASSWORD:-}
