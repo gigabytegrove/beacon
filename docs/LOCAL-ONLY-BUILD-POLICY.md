@@ -27,3 +27,7 @@ On October 12, a revised standalone Go/Win32 and Go/X11 preview was compiled loc
 - Fully offline standard-library native preview source: `clients/desktop-native-preview`, which does not depend on Fyne but has fewer features.
 
 Any previous documentation referring to running or enabling GitHub Actions workflows is **historical only**, not the active deployment/build process.
+
+## Locally compiled October 12 test artifacts
+
+The [October 12 release directory](../releases/previews/2026-10-12/README.md) contains locally compiled standard-library Go Win32/X11 preview builds with SHA-256 checksums. Their source and race-tested controller integration tests are in `clients/desktop-native-preview`. This preview is not feature-parity with the full Go/Fyne client. No automatic build workflows exist in the repository.

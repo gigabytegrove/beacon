@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -25,23 +26,26 @@ type View struct {
 }
 
 type Controller struct {
-	mu        sync.RWMutex
-	api       *beacon.Client
-	me        beacon.User
-	server    string
-	status    string
-	notice    string
-	buddies   []beacon.Buddy
-	groups    []beacon.Group
-	chats     map[int][]beacon.Message
-	typing    map[int]bool
-	chatNames map[int]string
-	stop      chan struct{}
-	wake      func()
+	mu           sync.RWMutex
+	api          *beacon.Client
+	me           beacon.User
+	server       string
+	status       string
+	notice       string
+	buddies      []beacon.Buddy
+	groups       []beacon.Group
+	chats        map[int][]beacon.Message
+	typing       map[int]bool
+	chatNames    map[int]string
+	stop         chan struct{}
+	wake         func()
+	loginPending bool
+	notifier     func(string, string)
+	pollEvery    time.Duration
 }
 
 func NewController(wake func()) *Controller {
-	return &Controller{status: "available", chats: map[int][]beacon.Message{}, typing: map[int]bool{}, chatNames: map[int]string{}, wake: wake}
+	return &Controller{status: "available", notifier: systemNotice, pollEvery: 3 * time.Second, chats: map[int][]beacon.Message{}, typing: map[int]bool{}, chatNames: map[int]string{}, wake: wake}
 }
 func (c *Controller) signal() {
 	if c.wake != nil {
@@ -57,42 +61,87 @@ func (c *Controller) errorf(format string, args ...any) {
 	c.mu.Unlock()
 	c.signal()
 }
+
+// Login admits only one in-flight attempt. A late failed login cannot
+// resurrect a session the user has already signed out of.
 func (c *Controller) Login(server, username, password string) {
-	c.errorf("Connecting to %s ...", server)
+	c.mu.Lock()
+	if c.loginPending {
+		c.mu.Unlock()
+		return
+	}
+	c.loginPending = true
+	c.notice = "Connecting to Beacon server..."
+	c.mu.Unlock()
+	c.signal()
 	go func() {
 		a, err := beacon.NewClient(server)
-		if err != nil {
-			c.errorf("%v", err)
-			return
-		}
-		x, end := deadline()
-		result, err := a.Login(x, username, password, "Beacon-Go-Desktop")
-		end()
-		if err != nil {
-			c.errorf("Login: %v", err)
-			return
+		if err == nil {
+			x, end := deadline()
+			var result beacon.LoginResult
+			result, err = a.Login(x, username, password, "Beacon-Go-Desktop")
+			end()
+			if err == nil {
+				c.mu.Lock()
+				c.loginPending = false
+				if c.stop != nil {
+					close(c.stop)
+				}
+				c.api = a
+				c.me = result.User
+				c.server = a.Server()
+				c.notice = "Signed in as " + result.User.DisplayName
+				c.stop = make(chan struct{})
+				c.buddies = nil
+				c.groups = nil
+				c.chats = map[int][]beacon.Message{}
+				c.typing = map[int]bool{}
+				c.chatNames = map[int]string{}
+				stop := c.stop
+				c.mu.Unlock()
+				c.signal()
+				go c.poll(stop, a)
+				return
+			}
 		}
 		c.mu.Lock()
-		if c.stop != nil {
-			close(c.stop)
-		}
-		c.api = a
-		c.me = result.User
-		c.server = a.Server()
-		c.notice = "Signed in as " + result.User.DisplayName
-		c.stop = make(chan struct{})
-		c.chats = map[int][]beacon.Message{}
-		c.typing = map[int]bool{}
-		c.chatNames = map[int]string{}
-		stop := c.stop
+		c.loginPending = false
+		c.notice = "Sign-in failed: " + err.Error()
 		c.mu.Unlock()
 		c.signal()
-		go c.poll(stop, a)
 	}()
 }
+
+// expireSession never performs a second API call on an expired token.
+func (c *Controller) expireSession(a *beacon.Client) {
+	c.mu.Lock()
+	if c.api != a {
+		c.mu.Unlock()
+		return
+	}
+	if c.stop != nil {
+		close(c.stop)
+		c.stop = nil
+	}
+	c.api = nil
+	c.me = beacon.User{}
+	c.buddies = nil
+	c.groups = nil
+	c.chats = map[int][]beacon.Message{}
+	c.typing = map[int]bool{}
+	c.chatNames = map[int]string{}
+	c.notice = "Your session expired or was revoked. Please sign in again."
+	c.mu.Unlock()
+	c.signal()
+}
+
 func (c *Controller) poll(stop <-chan struct{}, a *beacon.Client) {
-	tick := time.NewTicker(3 * time.Second)
+	tick := time.NewTicker(c.pollEvery)
 	defer tick.Stop()
+	// Never share a cursor between different accounts. Missed server messages
+	// are persisted, and event discovery does not change read markers.
+	var cursor beacon.Cursor
+	seeded := false
 	for {
 		select {
 		case <-stop:
@@ -101,6 +150,7 @@ func (c *Controller) poll(stop <-chan struct{}, a *beacon.Client) {
 		}
 		c.mu.RLock()
 		status := c.status
+		userID := c.me.ID
 		ids := make([]int, 0, len(c.chatNames))
 		for id := range c.chatNames {
 			ids = append(ids, id)
@@ -112,6 +162,23 @@ func (c *Controller) poll(stop <-chan struct{}, a *beacon.Client) {
 		groups, e2 := a.Groups(x)
 		chats := map[int][]beacon.Message{}
 		typings := map[int]bool{}
+		var arrivals []beacon.Message
+		var syncErr error
+		if err == nil && e2 == nil {
+			if !seeded {
+				cursor, syncErr = a.LatestEventID(x)
+				seeded = syncErr == nil
+			} else {
+				var next beacon.Cursor
+				next, syncErr = a.CatchUp(x, cursor, 100, 5, func(m beacon.Message) error {
+					if m.RecipientID == userID && m.SenderID != userID {
+						arrivals = append(arrivals, m)
+					}
+					return nil
+				})
+				cursor = next
+			}
+		}
 		if err == nil && e2 == nil {
 			for _, id := range ids {
 				msgs, e := a.History(x, id)
@@ -123,6 +190,10 @@ func (c *Controller) poll(stop <-chan struct{}, a *beacon.Client) {
 			}
 		}
 		end()
+		if errors.Is(err, beacon.ErrUnauthorized) || errors.Is(e2, beacon.ErrUnauthorized) || errors.Is(syncErr, beacon.ErrUnauthorized) {
+			c.expireSession(a)
+			return
+		}
 		c.mu.Lock()
 		if c.api != a {
 			c.mu.Unlock()
@@ -133,6 +204,34 @@ func (c *Controller) poll(stop <-chan struct{}, a *beacon.Client) {
 			c.buddies = peers
 			c.groups = groups
 			c.notice = "Connected to " + c.server
+			if len(arrivals) > 0 {
+				people := map[int]string{}
+				counts := map[int]int{}
+				muted := map[int]bool{}
+				for _, buddy := range peers {
+					people[buddy.ID] = buddy.Name()
+					muted[buddy.ID] = bool(buddy.Muted)
+				}
+				for _, m := range arrivals {
+					counts[m.SenderID]++
+				}
+				for id, count := range counts {
+					if muted[id] {
+						continue
+					}
+					name := people[id]
+					if name == "" {
+						name = "A Beacon contact"
+					}
+					text := "sent you a message"
+					if count > 1 {
+						text = fmt.Sprintf("sent you %d messages", count)
+					}
+					if c.notifier != nil {
+						go c.notifier("Beacon · "+name, name+" "+text)
+					}
+				}
+			}
 			for id, m := range chats {
 				c.chats[id] = m
 			}
@@ -257,6 +356,7 @@ func (c *Controller) Logout() {
 	c.chats = map[int][]beacon.Message{}
 	c.chatNames = map[int]string{}
 	c.notice = "Logged out"
+	c.loginPending = false
 	c.mu.Unlock()
 	c.signal()
 	if a != nil {

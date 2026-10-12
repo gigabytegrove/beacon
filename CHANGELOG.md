@@ -1,5 +1,14 @@
 # Beacon changelog
 
+## Locally built native preview 0.8.1 — October 12
+
+- Compiled real Windows x64 Win32 and Linux x64 X11 preview GUIs directly in the local build environment, without GitHub Actions.
+- Added controller-level duplicate sign-in protection, expired/revoked-session recovery, message-cursor catch-up, per-buddy muted notification aggregation, and native best-effort Linux notifications/Windows alert sound.
+- Added Go HTTP integration tests covering these behaviors and background read-state isolation; Go race tests and vet passed.
+- Verified Linux login/roster/pop-up IM/send under Xvfb against an HTTP simulator. Windows PE binary compiled but has not been tested on Windows.
+- Published versioned preview ZIP/tar.gz plus SHA-256 and explicit limitations; the full Fyne GUI and Android APK remain unverified.
+
+
 ## Local-only builds — October 12, 2026
 
 - Removed **all four GitHub Actions workflow files** (Windows, Linux, Android, server CI). Source pushes no longer initiate these builds.

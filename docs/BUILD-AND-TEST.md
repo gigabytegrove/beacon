@@ -1,82 +1,35 @@
-# Beacon local builds and acceptance tests
+# Beacon builds and tests — local-only
 
-**Current policy:** [Local-only builds](LOCAL-ONLY-BUILD-POLICY.md). All GitHub Actions files were removed. Do not follow any workflow-dispatch or self-hosted-runner suggestions in archived documentation.
+**GitHub Actions is not used.** Every workflow file was removed. See [local-only policy](LOCAL-ONLY-BUILD-POLICY.md).
 
-# Beacon: build and test the clients without GitHub-hosted runners
+## Full Windows Go/Fyne client (not yet build-verified)
 
-Last checked: **October 11, 2026**.
-
-## Verified environment facts
-
-GitHub Actions jobs in the private `gigabytegrove/beacon` repository have repeatedly returned failure **before runner allocation**, with zero executed steps and no usable build logs. A retry of the previous Windows/Linux workflows also failed at that stage. This does **not** prove the Go/Fyne code compiles or fails; it indicates CI cannot currently execute it.
-
-The assistant's isolated local build environment has Go 1.23 and GCC, but **no access to proxy.golang.org or the private repository over the network**, no cached Fyne dependencies, no Windows MinGW cross-compiler, no Android SDK/Gradle, and no OpenGL development headers. Hence it cannot produce or certify the native Windows/Linux GUIs or Android APK. Do not represent uncompiled source as downloadable clients.
-
-### Downloadable, actually compiled diagnostics
-
-The optional **Beacon Probe** is a *separate, standard-library Go connectivity tester*, not the desktop messenger. Windows x64 and Linux x64 diagnostic binaries were compiled locally on October 11, 2026, and the Linux binary passed health-only and authenticated smoke tests against a local simulated Beacon API. The Windows PE build was format-checked but cannot be launched inside the Linux environment.
-
-Source: [tools/beacon-probe](../tools/beacon-probe/main.go). It tests server health and optionally signs in, checks account endpoints and revokes its disposable login. It never sends a message.
-
-## Windows: build the actual Go GUI
-
-**For whoever builds the application** (not ordinary users), install Go 1.23+ and MSYS2/MinGW-w64 GCC (on a Windows development workstation with network access), then clone the private repository and run:
+On a **Windows build workstation** with Go and MinGW-w64 GCC installed, run:
 
 ```powershell
-cd "$HOME\beacon"
 powershell -ExecutionPolicy Bypass -File .\scripts\build-desktop-windows.ps1
 ```
 
-The script verifies prerequisites, runs `go mod tidy`, tests the Go HTTP client, compiles the actual Go/Fyne Windows executable, checks output size and writes a SHA256 file. If it succeeds, retrieve `dist/Beacon-Windows-0.8.0.exe`. **End users run the EXE without Go, GCC, Python, Fyne SDK or pip.**
+Require successful Go tests, a real .exe, its SHA-256, and installation testing on a Windows PC. Ordinary users will not require Go or Python.
 
-A failed compile will report a real compiler error, unlike the current GitHub startup failures. Do not hide build errors with `-SkipTests` unless deliberately isolating a build failure.
+## Full Linux Go/Fyne client (not yet build-verified)
 
-## Linux: build the actual Go GUI
-
-On an ordinary Linux development workstation with Go, GCC, pkg-config and system OpenGL/X11 development headers:
+On a Linux build workstation with Go, GCC and Fyne OpenGL/X11 development prerequisites:
 
 ```bash
-git clone https://github.com/gigabytegrove/beacon.git
-cd beacon
 bash scripts/build-desktop-linux.sh
 ```
 
-Output after a successful build: `dist/Beacon-Linux-0.8.0.tar.gz` with per-user installer, desktop entry and checksum. Standard Linux graphics runtime libraries and a display are still required on the target desktop; Python is not.
+Run Go race tests, confirm the built ELF library dependencies, install the app through its archive's unprivileged installer, and run the actual GUI.
 
-## Android: build the actual native Java APK
+## Native Android Java client (APK not yet built)
 
-On a Windows development workstation with Android Studio, SDK 35, JDK 17+ and Gradle 8.9 installed:
+Open `clients/android` in Android Studio with SDK 35 and JDK 17+ and build the debug APK, or run `scripts/build-android-windows.ps1` with Android SDK and Gradle 8.9 installed on the Windows build computer. Install and test on a real device. No Android APK is produced by the Go desktop build.
 
-```powershell
-cd "$HOME\beacon"
-powershell -ExecutionPolicy Bypass -File .\scripts\build-android-windows.ps1
-```
+## Python/FastAPI server and Dokploy
 
-The output after a successful build is `dist/Beacon-Android-0.8.0-debug.apk` plus checksum. Alternatively, open `clients/android` in Android Studio and select Build APK. These are **debug builds**, not signed Play Store releases.
+On a build workstation with Python requirements and Docker, run `python -m pytest -q`, `docker build -t beacon-local .`, then deploy the existing Git-backed `compose.dokploy.yaml` through Dokploy after a volume backup. No independent container is required for desktop builds.
 
-## GitHub Actions alternative
+## Locally compiled, reduced-feature native Go preview
 
-The Windows, Linux and Android workflows support manual **workflow_dispatch** as well as normal source-triggered builds. They now delegate Windows/Linux packaging to the **same versioned build scripts** used on development workstations. When hosted runners work again, Actions uploads binaries and checksum files. Otherwise, build on a suitably provisioned Windows/Linux workstation and test the outputs locally.
-
-**GitHub runner remediation:** In GitHub, inspect **Settings → Billing and licensing / Budgets and alerts / Actions** for unpaid charges, quota or spending blocks. Also check **Settings → Actions → General** for runner eligibility; if GitHub still provides no runner and no logs, contact GitHub Support with the run IDs. The zero-step failures alone do not prove billing is the cause.
-
-## Install and acceptance tests
-
-Deploy the Docker server first through Dokploy's Git Compose service (`./compose.dokploy.yaml`); never require a clone under `/root/beacon`. From a LAN machine run the Probe to verify the server can be reached. Then install the compiled GUI clients and manually test two users, independent devices, buddy photos, sign-on/off, away, typing, messages, search, notification windows, background behavior and logout/revocation. See [Release Checklist](RELEASE-CHECKLIST.md).
-
-**Do not declare Beacon production-ready until the clients actually compile and run on Windows, Linux and Android.**
-
-## Stabilization-specific tests
-
-The new `tests/test_connection_and_presence.py` exercises SQLite connection closure, rollback and multi-device buddy presence, including the batched query count. These are tests to run, **not** tests reported as passing. Use `python -m pytest -q` on a build workstation with the project requirements installed. The Go desktop's unauthorized-session recovery and scroll-preserving refresh also require actual Windows/Linux GUI testing. When GitHub jobs fail with no runner, use the documented manual build scripts; do not interpret no-step failures as successful builds.
-
-For step-by-step account/permission checks when GitHub never assigns a runner, use [GitHub Actions runner recovery](GITHUB-ACTIONS-RUNNER-RECOVERY.md). Zero-step failures do not establish a source-code build failure.
-
-## Self-hosted GitHub Actions (real CI, no skipped checks)
-
-The four workflows can run on the user's trusted build machines if hosted runners remain blocked. The workflow-dispatch form now offers `self-hosted`; after registering isolated Windows and Linux runners with labels `beacon-windows`/`beacon-linux`, the repository variable `BEACON_USE_SELF_HOSTED_RUNNERS=true` routes all push-triggered builds to them. They still execute the full Python, Go, Android and Docker builds and upload real binaries only on success.
-
-**Registration and execution instructions:** [Self-hosted Build Runners](SELF-HOSTED-BUILD-RUNNERS.md). Use dedicated nonproduction build workstations, not the live Dokploy host. Running a build on a trusted runner is not a bypass; reporting success without it would be.
-
-Self-hosted CI only runs for trusted pushes and owner-triggered manual dispatches. Pull-request workflows intentionally remain GitHub-hosted for isolation. Result artifacts have seven-day GitHub Actions retention; this changes no test requirements.
-
+Source: `clients/desktop-native-preview/`; build locally with `go test -race -count=1 ./...` and the Go toolchain. Its [October 12 test artifacts](../releases/previews/2026-10-12/README.md) were actually compiled for Windows and Linux. This **does not** satisfy the full Go/Fyne and Android acceptance gates.
