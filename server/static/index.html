@@ -93,7 +93,7 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
    <button data-admintab="overview" class="active">Overview</button>
    <button data-admintab="users">Accounts</button>
    <button data-admintab="sessions">Devices</button>
-   <button data-admintab="settings">Settings</button>
+   <button data-admintab="settings">Settings</button><button data-admintab="updates">Updates</button>
   </nav>
   <p id="adminError" class="error" role="alert"></p>
   <section id="adminOverview" class="admin-section">
@@ -113,6 +113,19 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
    <form id="adminSettingsForm"><label>Server name<input id="adminServerName" maxlength="64" required></label>
     <label>Description<input id="adminTagline" maxlength="120" required></label>
     <button class="admin-primary">Save settings</button></form>
+  </section>
+  <section id="adminUpdates" class="admin-section admin-card hidden">
+   <h2>Server updates</h2>
+   <p class="muted">Updates are requested through Dokploy. Beacon does not mount the Docker socket.</p>
+   <p><strong>Installed version:</strong> <span id="adminCurrentVersion">Checking…</span></p>
+   <p><strong>Revision:</strong> <span id="adminCurrentRevision">Checking…</span></p>
+   <p><strong>Deployment source:</strong> <span id="adminUpdateSource">Checking…</span></p>
+   <p id="adminUpdateState" role="status" aria-live="polite"></p>
+   <div style="display:flex;gap:12px;flex-wrap:wrap">
+    <button id="adminUpdateNow" class="admin-primary" type="button">Update server</button>
+    <button id="adminUpdateRefresh" type="button">Refresh status</button>
+   </div>
+   <p class="muted">Dokploy accepting a request does not confirm installation. Verify the version and health after restart. Existing data volumes are retained.</p>
   </section>
  </div>
 </section>
@@ -263,7 +276,7 @@ async function adminTab(section){
  if(!me||!me.is_admin)return;
  $("admin").classList.remove("hidden");$("roster").classList.add("hidden");adminMessage("");
  document.querySelectorAll("[data-admintab]").forEach(b=>b.classList.toggle("active",b.dataset.admintab===section));
- for(const name of ["overview","users","sessions","settings"])$("admin"+name[0].toUpperCase()+name.slice(1)).classList.toggle("hidden",name!==section);
+ for(const name of ["overview","users","sessions","settings","updates"])$("admin"+name[0].toUpperCase()+name.slice(1)).classList.toggle("hidden",name!==section);
  try{
   if(section==="overview"){
    const d=await api("/admin/overview");$("adminTitle").textContent=d.server_name+" · Server overview";
@@ -297,6 +310,14 @@ async function adminTab(section){
    }
   }else if(section==="settings"){
    const settings=await api("/admin/settings");$("adminServerName").value=settings.server_name;$("adminTagline").value=settings.tagline;
+  }else if(section==="updates"){
+   const d=await api("/admin/update/status");
+   $("adminTitle").textContent="Server updates";
+   $("adminCurrentVersion").textContent=d.current_version;
+   $("adminCurrentRevision").textContent=d.revision;
+   $("adminUpdateSource").textContent=d.deployment_source==="image"?"Prebuilt registry image":"Git source build";
+   $("adminUpdateNow").disabled=!d.configured||d.state==="queued";
+   $("adminUpdateState").textContent=d.configured?(d.state+": "+d.message):"Updater not configured. Set Dokploy URL, Compose ID and API key in the server environment.";
   }
  }catch(e){adminMessage(e.message);}
 }
@@ -306,6 +327,15 @@ $("webServerAdmin").onclick=()=>adminTab("overview");
 $("adminLogout").onclick=()=>$("logout").click();
 $("adminCreateUser").onclick=()=>$("userDialog").showModal();
 $("adminRefreshSessions").onclick=()=>adminTab("sessions");
+$("adminUpdateRefresh").onclick=()=>adminTab("updates");
+$("adminUpdateNow").onclick=async()=>{
+ if(!confirm("Request a Beacon server update? Dokploy may restart this server; existing data will be retained."))return;
+ const btn=$("adminUpdateNow");btn.disabled=true;
+ try{
+  const result=await api("/admin/update","POST");
+  $("adminUpdateState").textContent=result.message;
+ }catch(err){adminMessage(err.message);btn.disabled=false;}
+};
 $("adminResetCancel").onclick=()=>$("adminResetDialog").close();
 $("adminResetForm").onsubmit=async e=>{e.preventDefault();try{
  await api("/admin/users/"+adminResetUser+"/reset-password","POST",{password:$("adminResetPassword").value});
