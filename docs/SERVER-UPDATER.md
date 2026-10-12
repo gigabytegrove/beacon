@@ -1,120 +1,138 @@
-# Beacon server updater — configured entirely in the Control Center
+# Beacon 0.9.0 native GitHub updater
 
-## Goal
+## Platform independence
 
-Once an existing Beacon instance is running a release with the updater
-integration, **routine server updates happen from Beacon itself**:
+Beacon is one Docker container and a persistent data volume. The built-in
+updater **does not know or care** whether the container was launched with
+Docker Compose, Docker CLI, Portainer, Dokploy or another management system.
 
-**Control Center → Updates → Build & deploy latest main.**
+Update source: `https://github.com/gigabytegrove/beacon`, branch `main`.
+There are **no** Docker API calls, Docker socket mounts, extra containers,
+GitHub tokens, provider API keys, platform integrations, CI runners or GHCR
+requirements for normal application-code updates.
 
-Do not copy/paste a new Compose file for each source update.
-Do not mount the Docker socket.
-Do not run a separate updater container.
-Do not depend on GitHub Actions or paid build runners.
+## First installation / transition to 0.9.0
 
-Beacon asks **your existing Dokploy service** to redeploy through Dokploy's
-official API. Dokploy is already responsible for building/replacing the
-container. No GHCR image is required for this mode.
+A Docker container whose image predates the native supervisor **cannot**
+run a supervisor that isn't installed yet. It must be rebuilt or replaced
+**once** from a Beacon image containing `server/launcher.py`.
 
-## One-time bootstrap (required to install the updater)
+For an existing instance whose Compose already builds the public repository
+at `#main`, use that management tool's normal rebuild operation **once**.
+If you deployed from an earlier pinned recovery SHA, you must change the pin
+to `main` once. **Do not recreate or erase the existing persistent volume.**
 
-An older running image cannot use new source code until that code is deployed
-at least once. For a Dokploy Compose service already building
-`https://github.com/gigabytegrove/beacon.git#main`, use the existing
-Dokploy **Deploy/Rebuild** operation **once** to install Beacon 0.8.5.
+New users can install the 0.9.0 image through their preferred ordinary
+Docker/Compose deployment process. There is no dedicated platform setup.
 
-This does **not** require editing or recreating Compose when it already
-references `main`.
+Once 0.9.0 is running, a release that changes only Python server/application
+code or web assets can update directly inside Beacon without replacing
+the Docker container.
 
-If an emergency recovery deployment is pinned to an **older commit** rather
-than `main`, that pin must be removed/updated once. A pinned source will
-continue rebuilding the pinned code regardless of the update button.
+## Normal in-app update
 
-Preserve the existing `beacon-data` volume. **Never** choose "fresh volumes",
-run `docker compose down -v`, or recreate the persistent database volume.
+1. Sign in as a Beacon server administrator.
+2. Open **Control Center → Updates → Check GitHub**.
+3. Compare the running version/commit with GitHub's `main` commit.
+4. Select **Download & install**.
+5. Beacon obtains GitHub's immutable commit SHA and its source tree.
+6. The server downloads the source archive from GitHub over HTTPS.
+   Every extracted `server/` file is checked against the Git blob hash
+   in that commit's source tree. The source archive's SHA-256 is recorded.
+   Unsafe paths, symlinks, malformed files, oversized archives, incomplete
+   server packages, and new/changed Python dependency lists are rejected.
+7. Verified application files are staged under
+   `/data/beacon-updates/releases/<commit-sha>/`.
+8. The native launcher detects an atomic activation request, gracefully
+   stops the serving Python process and launches the new application code.
+   It verifies `GET /health` returns the expected revision.
+9. If the updated app fails to start, cannot serve the correct health
+   response in time or exits during probation, the launcher restores the
+   preceding code automatically. Use **Roll back** for manual restoration.
 
-## Connect Dokploy in Beacon — no Compose environment editing
+**The SQLite database stays at `/data/beacon.db` throughout.** Accounts,
+messages and persistent settings aren't copied, deleted or replaced by
+installing updated code. Migrations performed by future app versions may
+be forward-only, however; administrators should continue backing up SQLite
+data prior to updates. A code rollback is *not* a database downgrade.
 
-As a signed-in administrator:
+If GitHub cannot be reached, the old server continues running.
+The updater keeps only verified code in its installed-release directories.
+Server-side failures appear in the Update status view.
 
-1. Open **Control Center → Updates**.
-2. Under **Connect to Dokploy**, enter the **HTTPS URL** for your Dokploy
-   instance, the **Compose service ID**, and a Dokploy **API key** with access
-   to that service. Use Beacon over HTTPS when entering the API key.
-3. Click **Verify & save connection**. Beacon calls
-   `GET /api/compose.one?composeId=...` with that key and only saves a working
-   connection.
-4. The **Build & deploy latest main** button becomes enabled.
+## What native updates can and cannot replace
 
-Your Dokploy key is stored at
-`<BEACON_DB>.updater.json` (normally
-`/data/beacon.db.updater.json`) with mode `0600`, owned by the unprivileged
-Beacon process. It is **not sent back to the browser** and is not stored in
-the user settings database or GitHub. The persistent file survives routine
-container replacement. It is not encrypted at rest; protect volume backups
-and restrict the API key's permissions in Dokploy wherever supported.
+Automatic, without touching Docker:
 
-The connection can be changed in the same screen. Leave the key field blank
-to retain the existing key, or choose **Disconnect** to delete the saved
-connection. Existing `BEACON_DOKPLOY_*` environment variables are supported
-as an optional compatibility fallback, but **are no longer required**.
+- Python code under `server/`, including API endpoints and messaging logic
+- Web UI, HTML/CSS/JS and bundled `server/static/` assets
+- Additive, backward-compatible application migrations implemented in code
 
-Dokploy's `/api/compose.one` call verifies the key can read the target
-service; permission to actually redeploy is verified when the update request
-is submitted.
+Requires rebuilding/replacing the image through whatever Docker tool users
+already employ:
 
-## Routine update
+- Python packages added to or changed in `requirements.txt`
+- Base Python runtime, Linux system packages or Docker image configuration
+- The immutable bootstrap supervisor itself (`server/launcher.py`) if its
+  process-management machinery changes
 
-1. Commit new Beacon source to `main` (or publish a newer image if the
-   Compose service is explicitly configured for registry images).
-2. Open **Control Center → Updates** and click **Build & deploy latest main**.
-3. Beacon requests `POST /api/compose.redeploy` with:
-   - `composeId` set to the saved Compose service
-   - `freshVolumes` set to `false`
-4. Dokploy handles the rebuild/deployment through its own pipeline. Beacon
-   may disconnect briefly as its server container is replaced.
-5. After reconnection, verify the installed version and
-   `GET /health` (should respond `{"status":"ok"}`).
+Those limitations come from Docker's filesystem/image lifecycle; Beacon
+refuses dependency-incompatible updates rather than trying to mutate an
+immutable image or install packages as an unprivileged user.
 
-This button initiates the action. An accepted HTTP response does **not**
-mean the new image has finished building or is healthy. Deployment logs and
-rollback history remain available in Dokploy. Current Beacon UI does not
-yet show continuous Dokploy build-stage progress or automate rollback.
+## Security and lifecycle
 
-The updater enforces a 120-second request cooldown to reduce duplicate jobs.
-No passwords or API keys are written to logs or included in updater GET
-responses.
+- GitHub source is public; no source credentials are required.
+- Only HTTPS and the official GitHub API/archive hosts are contacted.
+  Redirects to other destinations are refused.
+- File contents are verified using Git's blob hash against the selected
+  immutable Git commit, and Python syntax is compiled before activation.
+- No installation shell scripts from archives are executed.
+- Update controls require a signed-in administrator; ordinary members and
+  unauthenticated visitors cannot check, install or request rollback.
+- Native launcher holds the serving process as a child and handles SIGTERM.
+- Upgrade files live in the same existing persistent volume as the database
+  but separate release directories.
+- Failure of a startup health check does not replace the existing database.
+- The updater's short-lived download memory and supervisor process are modest;
+  no second live Beacon server is required for a normal upgrade.
+- A previously saved, unused provider key from older experimental versions
+  is **not** used by the native updater. Remove that old key through your
+  original deployment configuration or delete its obsolete file manually.
 
-## Source build versus GHCR
+## Validation before recommending use on production
 
-Beacon can continue using the **existing public Git-source Compose build**;
-the in-app updater does not need GHCR. The optional
-[GHCR image Compose](../compose.image.yaml) only becomes usable once the
-image has **actually been published and pull-verified**.
+Required acceptance checks:
 
-The current source/build setup is fully compatible with the in-app update
-flow as long as Dokploy is configured to rebuild the current Git branch when
-`compose.redeploy` runs. Dokploy's default Docker Compose command includes
-`up -d --build`; custom deployment commands may require adjustment.
+1. Build fresh 0.9.0 container and confirm `/health` and login work.
+2. Test an account, a message, and the device/session APIs.
+3. Publish a compatible code-only change to `main`.
+4. Check GitHub and install via Beacon UI.
+5. Confirm the container ID and database volume are unchanged, but the
+   running commit has changed.
+6. Simulate a malformed/broken release and verify automatic rollback.
+7. Restart the container and confirm the selected release persists.
+8. Exercise manual rollback without losing messages.
 
-**Do not switch to the GHCR Compose file until an image exists.**
+These are the release gates. Committed source and mocked unit tests are **not**
+a substitute for a real in-container end-to-end rollout.
 
-## Troubleshooting
+## Conventional Docker Compose first installation
 
-- **Cannot verify Dokploy:** use a valid HTTPS origin reachable from inside
-  the Beacon container with a trusted certificate. HTTPS is mandatory for
-  the stored integration. Check that the API key can read the Compose
-  service by its actual ID.
-- **Update rejected:** check API-key deployment permissions and Dokploy's
-  application deployments/logs.
-- **Old version keeps returning:** check that Dokploy builds `main` and is
-  not pinned to a recovery commit. Confirm no custom Compose command skips
-  rebuilding.
-- **Database or user accounts missing:** STOP and investigate which volume
-  the service mounted before changing anything. Do not initialize or delete
-  volumes as a workaround.
+```yaml
+services:
+  beacon:
+    build:
+      context: https://github.com/gigabytegrove/beacon.git#main
+    restart: unless-stopped
+    ports:
+      - "8765:8765"
+    volumes:
+      - beacon-data:/data
+volumes:
+  beacon-data:
+```
 
-Official Dokploy references:
-
-- https://docs.dokploy.com/docs/api/compose
-- https://docs.dokploy.com/docs/core/docker-compose
+Do not replace an **existing** installation's volume mapping blindly; the
+actual persistent volume might have a Compose-project prefix. Verify its
+original mount before switching Compose definitions.
