@@ -1,0 +1,3 @@
+b70f1221742286bea9e4ab809a527fc3a5c768d7b68ce035845b09586b00ccf9  Beacon-Messenger-Windows-x64-Premium-20261011.zip
+adabec63b02a4eb4b517f1828669ec806e9ee292203c628794ebfebad0690322  Beacon-Messenger-Windows-x64-Premium-20261011.exe (inside zip)
+3f6d79308fffa60301a4196e7ca8470c400b07006f9179d567049607803ba497  Beacon-Messenger-Linux-x64-Premium-20261011.tar.gz

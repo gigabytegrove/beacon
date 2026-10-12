@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="beacon_navy">#09172D</color>
+    <color name="beacon_blue">#1479F7</color>
+    <color name="beacon_surface">#F3F6FC</color>
+    <color name="beacon_panel">#FFFFFF</color>
+    <color name="beacon_text">#12223D</color>
+    <color name="beacon_muted">#6C8196</color>
+    <color name="beacon_outline">#DDE7F4</color>
+    <color name="beacon_green">#15B985</color>
+    <color name="beacon_amber">#F5A83E</color>
+    <color name="beacon_busy">#DC5362</color>
+    <color name="beacon_blue_soft">#E6F2FF</color>
+    <color name="beacon_surface_tint">#F8FAFE</color>
+    <color name="beacon_divider">#E4EBF5</color>
+    <color name="beacon_navy_soft">#132541</color>
+</resources>

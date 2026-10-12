@@ -89,3 +89,10 @@ The Android workflow can now run on a dedicated Linux x64 self-hosted Actions wo
 The native Android foreground Activity now sends `/api/conversations/{peer_id}/read` only **after** `renderChat` has populated the active chat with downloaded messages. Downloading history or receiving a background notification alone must not mark a message read. The Activity remembers the latest requested read ID per conversation, suppressing duplicate requests and retrying after errors. The optional `BeaconMonitorService` remains notification-only and continues its own event cursor independently.
 
 This change is source-level; Android APK compilation and on-device validation remain mandatory. See [Multi-device Delivery](../../docs/MULTI-DEVICE-DELIVERY.md).
+
+
+## Premium branding resources — not yet integrated
+
+`design/android-premium/app/src/main/res/` now contains the premium navy/blue Beacon Android XML layouts, colors, drawables, status chips and buddy rows as a **design kit**. These resources have not been wired to the Android Java Activity/adapters and have **not** been compiled as an APK. Do not copy them wholesale over existing layouts without reviewing IDs and code bindings. The Java app remains the functional baseline while design integration and APK testing are outstanding.
+
+See [Premium Preview](../../docs/PREMIUM-PREVIEW.md).

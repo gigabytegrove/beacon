@@ -18,3 +18,10 @@ Beacon is a modern AIM-style messenger, separate from Monita.
 **Reality check:** Go/Fyne eliminates Python and Go development-environment requirements **for users of compiled desktop binaries**. Windows/Linux builds still need compiler/graphics development tools on CI workers; Linux runtime graphics libraries depend on the distribution. All clients and packages still require real-world build and acceptance tests. Android is intentionally native Java rather than forced into a Go GUI.
 
 Previous Python/Tkinter desktop source is temporarily retained for reference only. No cross-platform Go UI is currently being used to replace the Android app.
+
+
+## Branded premium UI preview is not the feature baseline
+
+The visually polished `clients/desktop-native-preview` implements a real Go/Win32 and Go/X11 desktop preview and may be used for layout and visual tests. It currently has fewer features than `clients/desktop-go`, which remains the **primary Go/Fyne client** and must not have its credential vault, group management, device sessions, or notification behavior silently removed.
+
+The native Android XML files in `design/android-premium` are a design resource kit only and do not yet constitute the compiled Java app. See [Premium Preview](PREMIUM-PREVIEW.md) and [Release Checklist](RELEASE-CHECKLIST.md).

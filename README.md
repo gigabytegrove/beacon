@@ -85,3 +85,16 @@ The full prerequisites, GitHub registration steps, security warnings, runner lab
 The Go desktop now uses authenticated **message-event cursors** in addition to the AIM buddy list's presence/unread refresh. Messages are caught up in ID order after temporary disconnects, and notifications no longer depend solely on unread counters increasing. The implementation validates server cursor continuity, rejects duplicate events and bounds each catch-up cycle. The Windows/Linux chat and native Android foreground Activity now send read receipts **after messages are rendered**, instead of marking background fetches as read.
 
 The new Go event transport and tests have passed the local `go test -race` suite; this does **not** mean native GUI or APK binaries have been compiled. See the detailed [multi-device delivery and read-state guide](docs/MULTI-DEVICE-DELIVERY.md) and [build readiness](docs/BUILD-AND-TEST.md).
+
+
+## Premium interface preview — Windows, Linux and Android design
+
+A **locally built, branded Go/Win32 and Go/X11 visual preview** is now preserved under [`clients/desktop-native-preview`](clients/desktop-native-preview/BUILDING.md). It uses the supplied Beacon blue chat/wireless logo and includes the redesigned login screen, buddy list, separate private IM windows, profile/presence context, search/filter, native field focus/hover and readable error states.
+
+![Premium Windows/Linux interface screenshots](docs/images/beacon-premium/overview.png)
+
+**Actual compiled test builds** are checked in under [`releases/previews/2026-10-11/`](releases/previews/2026-10-11/README.md) with SHA256 checksums. Windows is delivered as a ZIP containing an EXE; Linux as a tar.gz. The Linux GUI was exercised against a simulated API; Windows was cross-compiled and PE-format checked, **not run on Windows**. These are **feature-incomplete previews** and must not replace the existing Go/Fyne desktop feature baseline until parity is proven.
+
+The matching [Android premium resource kit](design/android-premium/README-PREMIUM.md) contains native Android XML styles/layouts, **not an APK**. The existing Android Java application remains unchanged until the resources are properly integrated and compiled.
+
+See [Premium UI preview details](docs/PREMIUM-PREVIEW.md).

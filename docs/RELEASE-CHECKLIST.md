@@ -105,3 +105,14 @@ This is a **release acceptance gate**, not a statement that the checks passed.
 - [ ] First login/monitor enable seeds latest cursor, avoiding months of old-message notification replay.
 - [ ] A revoked session discards its event cursor and clears remembered credentials.
 - [ ] Real Windows, Linux and Android binaries are successfully built and installed. Passing transport tests alone does not satisfy this gate.
+
+
+## Premium client UI import and parity gate
+
+- [ ] Verified preview Windows ZIP extracts an x64 PE32+ executable and its SHA256 matches the published hash.
+- [ ] Verified preview Linux tar.gz contains an ELF x64 executable, installer and correct checksum.
+- [ ] Full Win32 preview runtime test passes on a real Windows machine against Dokploy.
+- [ ] Android premium XML kit has been integrated into Java Activities/adapters, compiled as APK and tested on device.
+- [ ] Primary Go/Fyne desktop preserves full preexisting functionality while adopting premium branding.
+- [ ] No temporary screenshot/template placeholder data appear as real contacts or conversations.
+- [ ] All desktop feature-parity checks pass before making a premium preview the default.

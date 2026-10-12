@@ -1,5 +1,15 @@
 # Beacon changelog
 
+## 2026-10-11 premium native UI preview import
+
+- Imported the locally built premium Go/Win32 + Go/X11 Windows/Linux visual preview as an **independent source module**, without replacing the full-featured Go/Fyne desktop application.
+- Committed the matching flat blue/navy Beacon logo image assets, rasterized layouts, generated bitmap glyph atlases, hover/focus interactions, roster/search, new-message visual states, separate IM windows and developer preview/testing utilities.
+- Added the actual compiled Windows preview executable packaged inside a ZIP and Linux preview tarball, with exact SHA256 verification and explicit platform runtime limitations.
+- Added desktop screenshots and native Android premium colors, drawables and XML layout **design kit**. No false claim of a complete Android APK.
+- Added reproducible build instructions, preview acceptance tests, test provenance and a clear feature-parity migration plan.
+- **Primary client parity remains protected:** the existing Go/Fyne app still owns the full session vault, tray, notifications, profile/device management and multi-device roadmap.
+
+
 ## Client synchronization and multi-device read-state hardening
 
 - Added the native Go desktop's cursor-based `/api/events` transport: latest-ID baseline, bounded ordered catch-up, strict cursor validation and resumable delivery after transient failures.
