@@ -567,3 +567,14 @@ app.include_router(social_router)
 from .admin import register as register_admin_routes
 register_admin_routes(app, current=current, connection=connection, lock=LOCK,
                       hash_password=password_hash, disconnect_session=disconnect_session)
+
+# Deployments are initiated by Dokploy, never by attaching a Docker socket.
+from .update_control import register as register_update_routes
+
+def authorize_server_update(request: Request):
+    actor = current(request)
+    if not actor["is_admin"]:
+        raise HTTPException(403, "Administrator access required")
+    return actor
+
+register_update_routes(app, administrator=authorize_server_update)
