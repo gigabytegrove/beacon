@@ -29,6 +29,8 @@ input:focus,textarea:focus{outline:2px solid #57a0ff}label{display:block;margin:
 dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:15px;padding:22px;width:min(430px,92vw)}dialog::backdrop{background:#060e19b5}dialog h2{margin-bottom:14px}dialog button{margin-top:10px}
 #toasts{position:fixed;bottom:15px;right:15px;display:flex;flex-direction:column;gap:8px;z-index:10;pointer-events:none}
 .toast{background:#275680;border:1px solid #6390b9;border-radius:12px;padding:12px 16px;box-shadow:0 10px 40px #0007;max-width:340px;pointer-events:auto}
+.toast.success{background:#1a5845;border-color:#3fba86;color:#e1fff0}
+.toast.error{background:#763341;border-color:#d86b7d;color:#fff2f3}
 .error{color:#ff9c9c;margin-top:10px}
 .setup-tag{font-size:11px;font-weight:800;letter-spacing:.14em;color:#83c6ff;margin-bottom:12px}
 .setup-help{background:#10253e;border:1px solid #365b82;border-radius:12px;padding:16px;margin:20px 0;line-height:1.6}
@@ -212,6 +214,7 @@ dialog{color:#e8f2ff;background:#192c43;border:1px solid #567b9e;border-radius:1
 </section>
 <dialog id="adminResetDialog"><h2>Reset account password</h2><p id="adminResetTarget" class="muted"></p>
  <form id="adminResetForm"><label>New password<input id="adminResetPassword" autocomplete="new-password" type="password" minlength="12" maxlength="256" required></label>
+ <p id="adminResetError" class="error" role="alert" aria-live="polite"></p>
  <button type="submit">Reset password and revoke sessions</button>
  <button type="button" id="adminResetCancel">Cancel</button></form></dialog>
 <section id="roster" class="window hidden"><header class="window-title"><strong class="brand">◉ Beacon</strong><span class="title-right" id="connectStatus">Connecting…</span></header>
@@ -271,7 +274,7 @@ function tone(kind){if(!soundEnabled||!audioContext||audioContext.state!=="runni
 document.addEventListener("pointerdown",unlockAudio,{once:true});
 if(!token&&window.opener){try{token=window.opener.sessionStorage.getItem("beacon_token");if(token)sessionStorage.setItem("beacon_token",token);}catch{}}
 $("device").value=(navigator.platform||"Browser").slice(0,80);
-function toast(message){const el=document.createElement("div");el.className="toast";el.textContent=message;$("toasts").append(el);setTimeout(()=>el.remove(),5000);}
+function toast(message,kind="info"){const el=document.createElement("div");el.className="toast "+kind;el.setAttribute("role","status");el.textContent=message;$("toasts").append(el);setTimeout(()=>el.remove(),5500);}
 function notify(title,body,kind="message"){tone(kind);toast(title+" — "+body);if("Notification" in window&&Notification.permission==="granted"&&document.hidden){try{new Notification(title,{body:body});}catch{}}}
 function apiErrorMessage(status,detail,method,path){
  if(Array.isArray(detail)&&detail.length){
@@ -560,10 +563,17 @@ $("adminUpdateNow").onclick=async()=>{
  }catch(err){adminMessage(err.message);btn.disabled=false;}
 };
 $("adminResetCancel").onclick=()=>$("adminResetDialog").close();
-$("adminResetForm").onsubmit=async e=>{e.preventDefault();try{
- await api("/admin/users/"+adminResetUser+"/reset-password","POST",{password:$("adminResetPassword").value});
- $("adminResetPassword").value="";$("adminResetDialog").close();await adminTab("users");
- }catch(err){adminMessage(err.message);}};
+$("adminResetForm").onsubmit=async e=>{
+ e.preventDefault();const submit=e.submitter||$("adminResetForm").querySelector('[type="submit"]');
+ submit.disabled=true;$("adminResetError").textContent="";
+ try{
+  await api("/admin/users/"+adminResetUser+"/reset-password","POST",{password:$("adminResetPassword").value});
+  $("adminResetPassword").value="";$("adminResetDialog").close();
+  toast("Password reset. Active device sessions were revoked.","success");
+  await adminTab("users");
+ }catch(err){$("adminResetError").textContent=err.message;}
+ finally{submit.disabled=false;}
+};
 $("adminSettingsForm").onsubmit=async e=>{e.preventDefault();try{
  await api("/admin/settings","PUT",{server_name:$("adminServerName").value,tagline:$("adminTagline").value});
  await adminTab("settings");
