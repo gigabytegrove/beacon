@@ -155,7 +155,7 @@ async def lifespan(app):
             pass
 
 
-app = FastAPI(title="Beacon", version=os.getenv("BEACON_VERSION", "0.8.5"), lifespan=lifespan)
+app = FastAPI(title="Beacon", version=os.getenv("BEACON_RUNTIME_VERSION", os.getenv("BEACON_VERSION", "0.9.0")), lifespan=lifespan)
 
 
 def auth_token(token):
@@ -209,7 +209,7 @@ class NewMessage(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "version": app.version, "revision": os.getenv("BEACON_RUNTIME_REVISION", os.getenv("BEACON_REVISION", "unknown"))}
 
 
 @app.get("/api/setup/status")
@@ -568,7 +568,7 @@ from .admin import register as register_admin_routes
 register_admin_routes(app, current=current, connection=connection, lock=LOCK,
                       hash_password=password_hash, disconnect_session=disconnect_session)
 
-# Deployments are initiated by Dokploy, never by attaching a Docker socket.
+# Native updates come directly from public GitHub; the built-in supervisor performs activation.
 from .update_control import register as register_update_routes
 
 def authorize_server_update(request: Request):
