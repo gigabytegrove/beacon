@@ -42,3 +42,9 @@ The generated background/template PNGs and bitmap font atlases live in `cmd/beac
 ## What this preview is missing
 
 No OS credential vault, signed installer, Windows runtime acceptance test, system tray, reliable native notifications, rich profile/device management, or full native Android APK. Keep the primary Go/Fyne and Java implementations intact until feature parity has been demonstrated.
+
+## October 12 native test build
+
+New Go controller tests and notifications compile on **both** Windows and Linux with the original standard-library Win32/X11 renderer. The test server suite covers login request coalescing, expired sessions, cursor-based incoming-message notifications and mute; it verifies that background polling never advances read receipts. Linux `notify-send` is optional. Windows currently plays a non-blocking system sound, not a full native toast.
+
+The matching locally compiled Windows/Linux archives, exact checksums and test conditions are in [October 12 preview release](../../releases/previews/2026-10-12/README.md). This preview **does not replace** the supported full-featured Go/Fyne desktop application.

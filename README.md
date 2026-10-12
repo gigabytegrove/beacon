@@ -111,3 +111,7 @@ Both Windows/Linux premium preview binaries remain available under releases/prev
 ## Current build rule: local-only, no GitHub Actions
 
 As instructed, Beacon's GitHub Actions workflow files have been **deleted**. The approved build process is to compile and verify Windows, Linux, Android and Docker/server artifacts locally, then use GitHub only for source control and publishing verified outputs. The [local-only build policy](docs/LOCAL-ONLY-BUILD-POLICY.md) overrides earlier workflow/runner setup references throughout historical documentation.
+
+## October 12 local test builds
+
+The [Windows and Linux locally compiled test builds](releases/previews/2026-10-12/README.md) are available with hashes, source and completed Go/Linux mock-server tests. They improve login reliability, missed-message notifications, and revoked-session behavior. They are native Go preview applications rather than the full Go/Fyne client and **do not include an Android APK**. GitHub Actions remains completely removed.

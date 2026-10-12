@@ -1,0 +1,2 @@
+bf5d59939f063b6c6a9f03dd98a05c3b6cb0e486102756ae6645f920c2c365d5  Beacon-Windows-Local-Test-0.8.1.zip
+1a33a502779470e154abc8a162680e5db46c22027d8679b710973217ad37be84  Beacon-Linux-Local-Test-0.8.1.tar.gz
