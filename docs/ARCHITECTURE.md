@@ -3,6 +3,7 @@
 ## Core components
 
 - **Docker server:** FastAPI application under `server/`, with SQLite stored on a persistent Docker volume.
+- **Native updater:** `server/launcher.py` (PID 1, image-installed) supervises one Uvicorn child and loads the image's source or a pinned GitHub-verified code release from the same persistent `/data/beacon-updates` volume. `server/update_control.py` checks public GitHub `main`, validates downloaded source against immutable Git blob hashes, stages it, and signals the supervisor through atomic files. No Docker control plane is involved.
 - **Web client:** `server/static/index.html` is intentionally dependency-light. Buddy list and chats are separate browser windows.
 - **Desktop:** `clients/desktop-go` is the primary **Go/Fyne** Windows/Linux client, producing native executable files from shared source. The former `clients/desktop/beacon_desktop.py` is a deprecated prototype, not shipped.
 - **Android:** `clients/android` is a native Java Android project with Android Keystore-backed token storage and native list/chat screens; it polls while the Activity is visible.
@@ -82,3 +83,7 @@ Full semantics and acceptance tests: [Multi-device Delivery](MULTI-DEVICE-DELIVE
 The primary Go/Fyne desktop sources share a flat theme in clients/desktop-go/cmd/beacon/brand.go and reuse the existing secure auth, groups, session/device controls and message delivery. Styling is implemented through Fyne widgets and theme tokens rather than full-window raster images; the separate Win32/X11 premium preview is retained only for comparison.
 
 Android now includes the approved resources in clients/android/app/src/main/res, uses @style/BeaconTheme as the application theme, and sets actual Java-created login, roster and conversation widgets to match. The native networking, Keystore session encryption and optional foreground service are unchanged.
+
+## Update limitations
+
+The native updater installs Python server code and web assets without replacing the Docker container. Python dependency, OS/base-image and supervisor bootstrap changes still require an image build. Active release activation and rollback target application code only; SQLite migrations can be forward-only and require backups. See [SERVER-UPDATER.md](SERVER-UPDATER.md).
