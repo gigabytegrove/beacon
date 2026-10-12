@@ -98,3 +98,12 @@ A **locally built, branded Go/Win32 and Go/X11 visual preview** is now preserved
 The matching [Android premium resource kit](design/android-premium/README-PREMIUM.md) contains native Android XML styles/layouts, **not an APK**. The existing Android Java application remains unchanged until the resources are properly integrated and compiled.
 
 See [Premium UI preview details](docs/PREMIUM-PREVIEW.md).
+
+
+## Premium visual system now integrated into the supported clients
+
+The approved navy/blue/white Beacon design is now integrated in the **primary Windows/Linux Go/Fyne application**, not only its separate Win32/X11 screenshots. The full-featured client now has the branded theme and logo, designed sign-in card, friendly network errors, securely optional remembered sign-in, searchable buddy roster, grouped contact cards with real presence states, empty states and individual message cards. Its device, group, profile, status, typing and message features were not removed.
+
+Android's previously separate premium UI design kit is now installed in the **actual native Android app module** and used by MainActivity: branded header, lighter sign-in and roster styling, flat fields/buttons, contact rows and distinct incoming/outgoing message bubbles. The manifest selects BeaconTheme. Android source advances to v0.8.0.
+
+Both Windows/Linux premium preview binaries remain available under releases/previews as UI references and runnable *limited* test clients, never as substitutes for the full Go/Fyne client. Source integration does not mean Fyne and Android Gradle have compiled: full supported GUI binaries and an APK remain mandatory release gates.

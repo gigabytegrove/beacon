@@ -41,7 +41,7 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
       - uses: actions/upload-artifact@v4
         with:
-          name: beacon-android-0.7.0
-          path: clients/android/app/build/outputs/apk/debug/Beacon-Android-0.7.0-debug.apk
+          name: beacon-android-0.8.0
+          path: clients/android/app/build/outputs/apk/debug/Beacon-Android-0.8.0-debug.apk
           if-no-files-found: error
           retention-days: 7

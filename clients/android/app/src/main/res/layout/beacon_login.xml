@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:fillViewport="true" android:background="@color/beacon_surface">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="204dp"
+            android:background="@color/beacon_navy" android:gravity="center_vertical"
+            android:padding="26dp" android:orientation="horizontal">
+            <ImageView android:layout_width="74dp" android:layout_height="108dp"
+                android:src="@drawable/beacon_mark" android:contentDescription="Beacon Messenger logo"/>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:paddingLeft="12dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="Beacon" android:textColor="#FFFFFF" android:textStyle="bold" android:textSize="33sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="M E S S E N G E R" android:textColor="#65C7FF" android:textStyle="bold" android:textSize="11sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp" android:text="Your people. Your network."
+                    android:textColor="#BCD0E9" android:textSize="11sp" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_margin="20dp" android:padding="22dp"
+            android:orientation="vertical" android:background="@drawable/beacon_card">
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Welcome back" android:textColor="@color/beacon_text"
+                android:textStyle="bold" android:textSize="26sp" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="6dp" android:layout_marginBottom="26dp"
+                android:text="Sign in to your private messenger."
+                android:textColor="@color/beacon_muted" android:textSize="14sp" />
+            <TextView style="@style/BeaconSectionLabel" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:text="SERVER ADDRESS" />
+            <EditText android:id="@+id/beaconServer" style="@style/BeaconInput"
+                android:layout_width="match_parent" android:layout_marginTop="8dp"
+                android:inputType="textUri" android:hint="http://YOUR-DOKPLOY-IP:8765"/>
+            <TextView style="@style/BeaconSectionLabel" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="USERNAME" />
+            <EditText android:id="@+id/beaconUsername" style="@style/BeaconInput"
+                android:layout_width="match_parent" android:layout_marginTop="8dp"
+                android:inputType="text" android:hint="Your username"/>
+            <TextView style="@style/BeaconSectionLabel" android:layout_width="match_parent"
+                android:layout_height="wrap_content" android:layout_marginTop="22dp" android:text="PASSWORD" />
+            <EditText android:id="@+id/beaconPassword" style="@style/BeaconInput"
+                android:layout_width="match_parent" android:layout_marginTop="8dp"
+                android:inputType="textPassword" android:hint="Your password"/>
+            <Button android:id="@+id/beaconSignIn" style="@style/BeaconPrimaryButton"
+                android:layout_width="match_parent" android:layout_marginTop="28dp"
+                android:text="Sign in"/>
+            <TextView android:id="@+id/beaconConnectionStatus"
+                android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:layout_marginTop="18dp" android:gravity="center_horizontal"
+                android:text="Connect to your private Beacon server"
+                android:textColor="@color/beacon_muted" android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+</ScrollView>

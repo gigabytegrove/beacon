@@ -25,3 +25,10 @@ Previous Python/Tkinter desktop source is temporarily retained for reference onl
 The visually polished `clients/desktop-native-preview` implements a real Go/Win32 and Go/X11 desktop preview and may be used for layout and visual tests. It currently has fewer features than `clients/desktop-go`, which remains the **primary Go/Fyne client** and must not have its credential vault, group management, device sessions, or notification behavior silently removed.
 
 The native Android XML files in `design/android-premium` are a design resource kit only and do not yet constitute the compiled Java app. See [Premium Preview](PREMIUM-PREVIEW.md) and [Release Checklist](RELEASE-CHECKLIST.md).
+
+
+## Premium brand parity
+
+Primary Windows/Linux: Go/Fyne theme and branded login, filtered grouped buddy roster, contacts with availability indicators and profiles, distinct incoming/outgoing message cards. No existing account/device capabilities intentionally removed. The separate Win32/X11 preview remains a visual reference only.
+
+Native Android: actual manifest and Java Activity now use the light BeaconTheme and resources present in the app module; not merely a design preview. Login, roster, chat, profile and background monitoring continue to use native Java and the shared server API. Full matching graphical binaries remain to be compiled/tested.

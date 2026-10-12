@@ -24,8 +24,8 @@ def test_remote_messaging_service_wiring():
 
 def test_version_and_android_token_security():
     script = (BASE / "app/build.gradle").read_text()
-    assert "versionCode 7" in script
-    assert "0.7.0" in script
+    assert "versionCode 8" in script
+    assert "0.8.0" in script
     session = (JAVA / "SecureSession.java").read_text()
     assert "AndroidKeyStore" in session
     assert "AES/GCM/NoPadding" in session
@@ -53,3 +53,28 @@ def test_android_read_receipts_follow_visible_render():
     assert "displayedReadCursors" in method
     assert "if (messages == null || messagesList == null || !foreground) return;" in method
     assert 'request("/conversations/" + peer + "/read"' in method
+
+
+def test_actual_android_premium_theme_is_wired():
+    from xml.etree import ElementTree
+    resources = BASE / "app/src/main/res"
+    required = (
+        "values/colors.xml", "values/styles.xml", "drawable/beacon_mark.png",
+        "drawable/beacon_field.xml", "drawable/beacon_primary.xml",
+        "drawable/beacon_buddy_row_background.xml", "layout/beacon_login.xml",
+        "layout/beacon_roster.xml", "layout/beacon_chat.xml"
+    )
+    for item in required:
+        assert (resources / item).is_file(), item
+    for xml in resources.rglob("*.xml"):
+        ElementTree.parse(xml)
+    manifest = (BASE / "app/src/main/AndroidManifest.xml").read_text()
+    assert 'android:theme="@style/BeaconTheme"' in manifest
+    source = (JAVA / "MainActivity.java").read_text()
+    for marker in (
+        "private LinearLayout brandHeader(", "R.drawable.beacon_mark",
+        "R.drawable.beacon_field", "R.drawable.beacon_primary",
+        "R.drawable.beacon_buddy_row_background",
+        "private GradientDrawable flatPanel("
+    ):
+        assert marker in source

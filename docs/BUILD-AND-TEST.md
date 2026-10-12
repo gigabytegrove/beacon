@@ -48,7 +48,7 @@ cd "$HOME\beacon"
 powershell -ExecutionPolicy Bypass -File .\scripts\build-android-windows.ps1
 ```
 
-The output after a successful build is `dist/Beacon-Android-0.7.0-debug.apk` plus checksum. Alternatively, open `clients/android` in Android Studio and select Build APK. These are **debug builds**, not signed Play Store releases.
+The output after a successful build is `dist/Beacon-Android-0.8.0-debug.apk` plus checksum. Alternatively, open `clients/android` in Android Studio and select Build APK. These are **debug builds**, not signed Play Store releases.
 
 ## GitHub Actions alternative
 

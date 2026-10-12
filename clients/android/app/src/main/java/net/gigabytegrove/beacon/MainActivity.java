@@ -11,6 +11,8 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.Typeface;
 import android.os.Build;
 import android.os.Bundle;
 import android.net.Uri;
@@ -56,10 +58,12 @@ import java.util.concurrent.Executors;
  */
 public final class MainActivity extends Activity {
     public static volatile boolean isUiVisible = false;
-    private static final int BACKGROUND = Color.rgb(15, 28, 46);
-    private static final int SURFACE = Color.rgb(30, 52, 78);
-    private static final int TEXT = Color.rgb(235, 244, 255);
-    private static final int MUTED = Color.rgb(163, 189, 214);
+    private static final int BACKGROUND = Color.rgb(243, 246, 252);
+    private static final int SURFACE = Color.WHITE;
+    private static final int TEXT = Color.rgb(18, 34, 61);
+    private static final int MUTED = Color.rgb(108, 129, 150);
+    private static final int PRIMARY = Color.rgb(20, 121, 247);
+    private static final int OUTLINE = Color.rgb(221, 231, 244);
     private static final long REFRESH_MS = 3500L;
     private static final int PICK_AVATAR_REQUEST = 741;
     private final AtomicBoolean pollInFlight = new AtomicBoolean(false);
@@ -239,10 +243,18 @@ public final class MainActivity extends Activity {
         return (int) (amount * getResources().getDisplayMetrics().density + 0.5f);
     }
 
+    private GradientDrawable flatPanel(int background, int radiusDp, int stroke) {
+        GradientDrawable shape = new GradientDrawable();
+        shape.setColor(background);
+        shape.setCornerRadius(dp(radiusDp));
+        if (stroke != 0) shape.setStroke(dp(1), stroke);
+        return shape;
+    }
+
     private LinearLayout vertical() {
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(dp(14), dp(12), dp(14), dp(12));
+        box.setPadding(dp(18), dp(14), dp(18), dp(14));
         return box;
     }
 
@@ -251,7 +263,8 @@ public final class MainActivity extends Activity {
         label.setText(value);
         label.setTextSize(size);
         label.setTextColor(color);
-        label.setPadding(dp(5), dp(8), dp(5), dp(8));
+        label.setPadding(dp(7), dp(8), dp(7), dp(8));
+        if (size >= 19) label.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
         return label;
     }
 
@@ -259,6 +272,10 @@ public final class MainActivity extends Activity {
         Button b = new Button(this);
         b.setAllCaps(false);
         b.setText(value);
+        b.setTextSize(13);
+        b.setTextColor(PRIMARY);
+        b.setBackground(flatPanel(Color.WHITE, 12, OUTLINE));
+        b.setPadding(dp(12), dp(8), dp(12), dp(8));
         b.setOnClickListener(click);
         return b;
     }
@@ -267,12 +284,33 @@ public final class MainActivity extends Activity {
         EditText field = new EditText(this);
         field.setSingleLine(true);
         field.setTextColor(TEXT);
+        field.setTextSize(15);
         field.setHintTextColor(MUTED);
         field.setHint(hint);
+        field.setPadding(dp(15), dp(12), dp(15), dp(12));
+        field.setBackgroundResource(R.drawable.beacon_field);
         field.setInputType(secret ?
                 InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD :
                 InputType.TYPE_CLASS_TEXT);
         return field;
+    }
+
+    private LinearLayout brandHeader(String tagline) {
+        LinearLayout header = new LinearLayout(this);
+        header.setOrientation(LinearLayout.HORIZONTAL);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(2), dp(14), dp(2), dp(18));
+        ImageView logo = new ImageView(this);
+        logo.setImageResource(R.drawable.beacon_mark);
+        logo.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        header.addView(logo, new LinearLayout.LayoutParams(dp(64), dp(64)));
+        LinearLayout wording = new LinearLayout(this);
+        wording.setOrientation(LinearLayout.VERTICAL);
+        TextView name = text("Beacon", 28, TEXT);
+        wording.addView(name);
+        wording.addView(text(tagline, 13, MUTED));
+        header.addView(wording, new LinearLayout.LayoutParams(0, -2, 1));
+        return header;
     }
 
     private void setRoot(LinearLayout layout) {
@@ -291,18 +329,26 @@ public final class MainActivity extends Activity {
         pollInFlight.set(false);
         activeBuddy = null;
         LinearLayout layout = vertical();
-        layout.addView(text("◉ Beacon", 30, TEXT));
-        layout.addView(text("Your people. Your network.", 16, MUTED));
+        layout.addView(brandHeader("Your people. Your network."));
+        layout.addView(text("WELCOME BACK", 13, PRIMARY));
+        layout.addView(text("Sign in to your space", 23, TEXT));
         EditText address = edit("Server URL — http://192.168.1.10:8765", false);
         address.setText(server.isEmpty() ? "http://" : server);
         EditText username = edit("Username", false);
         EditText password = edit("Password", true);
         EditText device = edit("Device name", false);
         device.setText("Android · " + Build.MODEL);
-        layout.addView(address);
-        layout.addView(username);
-        layout.addView(password);
-        layout.addView(device);
+        LinearLayout fields = vertical();
+        fields.setBackground(flatPanel(SURFACE, 18, OUTLINE));
+        fields.addView(text("SERVER ADDRESS", 12, MUTED));
+        fields.addView(address);
+        fields.addView(text("USERNAME", 12, MUTED));
+        fields.addView(username);
+        fields.addView(text("PASSWORD", 12, MUTED));
+        fields.addView(password);
+        fields.addView(text("DEVICE NAME", 12, MUTED));
+        fields.addView(device);
+        layout.addView(fields);
         errorLabel = text(message, 13, MUTED);
         layout.addView(errorLabel);
         Button signIn = button("Sign in", v -> {
@@ -351,7 +397,14 @@ public final class MainActivity extends Activity {
                         if (incoming > 0) openIncomingConversation(incoming);
                     });
         });
-        layout.addView(signIn);
+        signIn.setTextColor(Color.WHITE);
+        signIn.setTextSize(16);
+        signIn.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
+        signIn.setBackgroundResource(R.drawable.beacon_primary);
+        LinearLayout.LayoutParams signInMargin = new LinearLayout.LayoutParams(-1, dp(54));
+        signInMargin.setMargins(0, dp(12), 0, dp(12));
+        layout.addView(signIn, signInMargin);
+        layout.addView(text("SELF-HOSTED  ·  PRIVATE LAN  ·  BEACON", 11, MUTED));
         setRoot(layout);
     }
 
@@ -382,7 +435,8 @@ public final class MainActivity extends Activity {
         activeBuddy = null;
         lastRosterFingerprint = "";
         LinearLayout layout = vertical();
-        layout.addView(text("◉ Beacon · Buddy List", 24, TEXT));
+        layout.addView(brandHeader("Buddy List  ·  " + currentStatus));
+        layout.addView(text("YOUR CONNECTIONS", 12, PRIMARY));
         LinearLayout controls = new LinearLayout(this);
         controls.setOrientation(LinearLayout.HORIZONTAL);
         controls.addView(button("+ Buddy", v -> addBuddyDialog()));
@@ -493,16 +547,16 @@ public final class MainActivity extends Activity {
         for (JSONObject group : sections) {
             String name = group.optString("name");
             int groupId = group.isNull("id") ? -1 : group.optInt("id", -1);
-            rosterList.addView(text(name, 19, Color.rgb(143, 200, 255)));
+            rosterList.addView(text(name.toUpperCase(), 14, PRIMARY));
             int matched = 0;
             for (JSONObject buddy : knownBuddies) {
                 int assigned = buddy.isNull("group_id") ? -1 : buddy.optInt("group_id", -1);
                 if (assigned != groupId) continue;
                 matched++;
                 LinearLayout line = new LinearLayout(this);
-                line.setBackgroundColor(SURFACE);
+                line.setBackgroundResource(R.drawable.beacon_buddy_row_background);
                 line.setGravity(Gravity.CENTER_VERTICAL);
-                line.setPadding(dp(8), dp(8), dp(8), dp(8));
+                line.setPadding(dp(12), dp(12), dp(12), dp(12));
                 line.addView(photo(buddy));
                 String state = buddy.optString("presence", "offline");
                 String indicator = state.equals("available") ? "● " : state.equals("offline") ? "○ " : "◐ ";
@@ -515,7 +569,9 @@ public final class MainActivity extends Activity {
                 int buddyId = buddy.optInt("id");
                 line.setOnClickListener(v -> openChat(buddyId, buddyName(buddy)));
                 line.setOnLongClickListener(v -> { buddyOptions(buddy); return true; });
-                rosterList.addView(line);
+                LinearLayout.LayoutParams rowMargins = new LinearLayout.LayoutParams(-1, -2);
+                rowMargins.setMargins(0, dp(4), 0, dp(7));
+                rosterList.addView(line, rowMargins);
             }
             if (matched == 0) rosterList.addView(text("No buddies in this group", 13, MUTED));
         }
@@ -590,11 +646,16 @@ public final class MainActivity extends Activity {
             rendered.add(id);
             boolean mine = message.optInt("sender_id") == myUserId;
             TextView bubble = text((mine ? "You" : activeName) + "\n" +
-                    message.optString("body"), 16, TEXT);
-            bubble.setBackgroundColor(mine ? Color.rgb(32, 91, 153) : SURFACE);
+                    message.optString("body"), 16, mine ? Color.WHITE : TEXT);
+            bubble.setMaxWidth(dp(300));
+            bubble.setPadding(dp(16), dp(12), dp(16), dp(12));
+            bubble.setBackground(flatPanel(mine ? PRIMARY : SURFACE, 16, mine ? 0 : OUTLINE));
+            LinearLayout line = new LinearLayout(this);
+            line.setGravity(mine ? Gravity.RIGHT : Gravity.LEFT);
             LinearLayout.LayoutParams margins = new LinearLayout.LayoutParams(-1, -2);
-            margins.setMargins(dp(8), dp(5), dp(8), dp(5));
-            messagesList.addView(bubble, margins);
+            margins.setMargins(dp(6), dp(6), dp(6), dp(6));
+            line.addView(bubble);
+            messagesList.addView(line, margins);
         }
         if (snap.typing != null && typingLabel != null)
             typingLabel.setText(snap.typing.optBoolean("active") ? activeName + " is typing…" : "");
