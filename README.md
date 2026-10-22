@@ -1,5 +1,18 @@
 # Beacon
 
+<!-- GIGABYTE GROVE REPOSITORY BADGES START -->
+<p align="center">
+  <a href="https://github.com/gigabytegrove/beacon"><img alt="GitHub repository" src="https://img.shields.io/badge/GitHub-Repository-181717?logo=github&logoColor=white"></a>
+  <a href="https://github.com/gigabytegrove/beacon/stargazers"><img alt="GitHub stars" src="https://img.shields.io/github/stars/gigabytegrove/beacon?style=flat&label=Stars&logo=github"></a>
+  <a href="https://github.com/gigabytegrove/beacon/issues"><img alt="Issues" src="https://img.shields.io/badge/Issues-View-555555?logo=github"></a>
+  <a href="https://github.com/gigabytegrove/beacon/releases"><img alt="Releases" src="https://img.shields.io/badge/Releases-View-555555?logo=github"></a>
+  <a href="https://paypal.me/gigabytegrove"><img alt="Donate via PayPal" src="https://img.shields.io/badge/Donate-PayPal-0070BA?logo=paypal&logoColor=white"></a>
+</p>
+<p align="center">
+  <a href="https://github.com/gigabytegrove/beacon">Repository</a> · <a href="https://github.com/gigabytegrove/beacon/stargazers">Stars</a> · <a href="https://github.com/gigabytegrove/beacon/issues">Issues</a> · <a href="https://github.com/gigabytegrove/beacon/releases">Releases</a> · <a href="https://paypal.me/gigabytegrove">Donate via PayPal</a>
+</p>
+<!-- GIGABYTE GROVE REPOSITORY BADGES END -->
+
 **Your people. Your network.** Beacon is a LAN-first, self-hosted instant messenger inspired by classic AOL Instant Messenger: compact buddy list, profile photos, online/away/busy status, sign-on notices, typing indicators and separate conversation windows. **Beacon is independent of Monita.**
 
 ## Current server development release: 0.9.1 — Account creation hotfix + native GitHub updater
