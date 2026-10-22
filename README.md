@@ -185,3 +185,7 @@ After that, compatible application-code updates are performed entirely
 inside Beacon.
 
 [Architecture, security, supported updates and release gates](docs/SERVER-UPDATER.md).
+
+## Support Gigabyte Grove
+
+If this project is useful to you, you can support ongoing Gigabyte Grove development with an optional [PayPal donation](https://paypal.me/gigabytegrove). Donations are appreciated but never required to use this repository.
