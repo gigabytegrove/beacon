@@ -47,8 +47,8 @@ The Go client only saves a nonsecret server URL preference.
 ## Configuration
 
 The server URL must point to a real Dokploy Beacon host, e.g.
-`http://redacted.invalid:8765` (replace with your own address). The
-address `127.0.0.1` refers to the computer running the desktop client.
+`http://beacon-host.local:8765` (replace with your own address). The
+address `localhost` refers to the computer running the desktop client.
 Use HTTPS via a proper reverse proxy for networks you don't fully trust.
 
 Source is included with the binaries for verification/reproducibility.
