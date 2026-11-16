@@ -80,15 +80,25 @@ fi
 docker rm -f "$container_id" >/dev/null
 container_id=""
 
-echo "Step 3: Tag the tested image (version plus rolling latest)."
+# Emergency releases can publish an immutable version without moving the
+# floating latest tag, avoiding an unintended production image promotion.
+publish_latest="${BEACON_PUBLISH_LATEST:-true}"
+[[ "$publish_latest" == true || "$publish_latest" == false ]] || {
+  echo "ERROR: BEACON_PUBLISH_LATEST must be true or false." >&2
+  exit 2
+}
+echo "Step 3: Tag the tested image."
 docker tag "$local_image" "$image:$version"
-docker tag "$local_image" "$image:latest"
+if [[ "$publish_latest" == true ]]; then docker tag "$local_image" "$image:latest"; fi
 
-echo "Step 4: Push both tags to GitHub Container Registry."
+echo "Step 4: Push versioned image to GitHub Container Registry."
 echo "Docker must already be logged in to ghcr.io with a package-write credential."
 docker push "$image:$version"
-docker push "$image:latest"
-
 echo "PUBLISHED: $image:$version"
-echo "PUBLISHED: $image:latest"
+if [[ "$publish_latest" == true ]]; then
+  docker push "$image:latest"
+  echo "PUBLISHED: $image:latest"
+else
+  echo "NOT PROMOTED: $image:latest (intentional safety isolation)"
+fi
 echo "NOTE: New GHCR packages are private by default. Make the package public (or configure Dokploy pull credentials) before switching Compose to image mode."
