@@ -1,4 +1,5 @@
 """Portable tests for Windows integration selection and DPAPI roundtrip."""
+import ast
 import importlib.util
 import sys
 from pathlib import Path
@@ -32,8 +33,22 @@ def test_source_entrypoints():
     assert "def close_window(self)" in desktop
     # Beacon uses the platform-neutral notify() adapter, which forwards to
     # Windows system_notice() and to notify-send on Linux.
-    assert 'notify, create_tray' in desktop
-    assert 'if notify("Beacon", text):' in desktop
+    syntax = ast.parse(desktop)
+    assert any(
+        isinstance(node, ast.ImportFrom)
+        and node.module == "platform_integration"
+        and any(alias.name == "notify" for alias in node.names)
+        for node in ast.walk(syntax)
+    ), "Desktop client must import the cross-platform notification adapter"
+    assert any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "notify"
+        and len(node.args) >= 2
+        and isinstance(node.args[0], ast.Constant)
+        and node.args[0].value == "Beacon"
+        for node in ast.walk(syntax)
+    ), "Desktop client must actually invoke notifications"
     integration = (MODULE.parent / "platform_integration.py").read_text(encoding="utf-8")
     assert "system_notice as windows_notice" in integration
     assert "return windows_notice(title, message)" in integration
