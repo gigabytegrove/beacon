@@ -30,4 +30,11 @@ def test_source_entrypoints():
     assert "self.restore_saved_session()" in desktop
     assert "self.ensure_tray()" in desktop
     assert "def close_window(self)" in desktop
-    assert "system_notice(" in desktop
+    # Beacon uses the platform-neutral notify() adapter, which forwards to
+    # Windows system_notice() and to notify-send on Linux.
+    assert 'notify, create_tray' in desktop
+    assert 'if notify("Beacon", text):' in desktop
+    integration = (MODULE.parent / "platform_integration.py").read_text(encoding="utf-8")
+    assert "system_notice as windows_notice" in integration
+    assert "return windows_notice(title, message)" in integration
+    assert callable(module.system_notice)

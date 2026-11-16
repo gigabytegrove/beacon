@@ -15,7 +15,10 @@ def test_remote_messaging_service_wiring():
     assert "stopMonitor()" in activity
     assert "startMonitor()" in activity
     assert "ACTION_START" in service and "ACTION_STOP" in service
-    assert '"/api/events?after="' in service
+    # request() prefixes /api; the service correctly passes relative paths.
+    assert 'new URL(server + "/api" + path)' in service
+    assert 'request("/events?after=" + cursor + "&limit=200")' in service
+    assert 'new URL(server + "/api/presence")' in service
     assert '"/api/presence"' in service
     assert "new SecureSession(this).load()" in service
     assert "prefs.edit().putLong(cursorKey, cursor)" in service
