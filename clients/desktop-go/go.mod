@@ -1,6 +1,6 @@
 module github.com/gigabytegrove/beacon/clients/desktop-go
 
-go 1.23.0
+go 1.27.4
 
 require (
  fyne.io/fyne/v2 v2.8.1
